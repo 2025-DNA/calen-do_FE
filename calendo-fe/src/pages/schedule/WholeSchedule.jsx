@@ -17,9 +17,6 @@ import exitIcon from "../../assets/images/x.svg";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.module.css";
 
-
-
-
 Modal.setAppElement("#root");
 
 const WholeSchedule = () => {

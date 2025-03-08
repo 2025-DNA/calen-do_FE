@@ -86,7 +86,7 @@ export const DatePickerWrapper = styled.div`
 export const Label = styled.label`
     font-size: 14px;
     color: #000;
-    margin: 15px;
+    margin: 10px;
 `;
 
 export const DateInput = styled.input`
@@ -211,6 +211,23 @@ export const StyledCalendar = styled(Calendar)`
 
     
 `;
+
+export const InputWrapper = styled.div`
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 70%;
+    margin: 8px 0;
+`;
+
+export const TextInput = styled.input`
+    width: 100%;
+    padding: 8px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    font-size: 16px;
+`;
+
 
 
 
