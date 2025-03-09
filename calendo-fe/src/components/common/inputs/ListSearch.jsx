@@ -59,7 +59,7 @@ const AddFriendButton = styled.button`
     }
 `;
 
-function ListSearch({ userInput, setUserInput, onSearch, searchResults, onAddFriend }) {
+function ListSearch({ userInput, onSearch, searchResults, onAddFriend }) {
     const [selectedUser, setSelectedUser] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -94,7 +94,6 @@ function ListSearch({ userInput, setUserInput, onSearch, searchResults, onAddFri
                 ))}
             </SearchResultsPopup>
 
-            {/* 초대 모달 */}
             {isModalOpen && selectedUser && (
                 <InviteModal onConfirm={handleConfirmInvite} onCancel={() => setIsModalOpen(false)} />
             )}
