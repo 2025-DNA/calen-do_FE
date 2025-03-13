@@ -83,7 +83,7 @@ function ListSearch({ userInput, onSearch, searchResults, onAddFriend }) {
                 value={userInput}
                 onChange={(e) => onSearch(e.target.value)}
             />
-            <SearchResultsPopup visible={searchResults.length > 0}>
+            <SearchResultsPopup style={{ display: searchResults.length > 0 ? "block" : "none" }}>
                 {searchResults.map((user) => (
                     <SearchItem key={user.id}>
                         <span>{user.nickName}</span>

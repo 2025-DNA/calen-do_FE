@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom"; 
-import axios from "axios";
+import api from "../../services/api";
 import styled from "styled-components";
 import * as S from "./styled";
 import ListSearch from "../../components/common/inputs/ListSearch";
@@ -51,17 +51,7 @@ function InvitePage() {
     const [projectName, setProjectName] = useState(""); 
     const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
-    const mockUsers = [
-        { id: 1, nickName: "김철수" },
-        { id: 2, nickName: "김영희" },
-        { id: 3, nickName: "김지성" },
-        { id: 4, nickName: "손흥민" },
-        { id: 5, nickName: "유재석" },
-        { id: 6, nickName: "강호동" },
-    ];
-
-    const isMock = true;
-
+    /*유저 검색*/
     const onSearch = async (input) => {
         setUserInput(input);
 
@@ -70,30 +60,84 @@ function InvitePage() {
             return;
         }
 
-        if (isMock) {
-            const filteredResults = mockUsers.filter(user =>
-                user.nickName.includes(input)
-            );
-            setSearchResults(filteredResults);
-        } else {
-            try {
-                const response = await axios.get(`${API_BASE_URL}/users/search`, {
-                    params: { nickName: input },
-                    withCredentials: true
-                });
-                setSearchResults(response.data);
-            } catch (error) {
-                console.error("검색 중 오류 발생:", error);
-                setSearchResults([]);
-            }
+        try {
+            const response = await api.get(`/users/search?nickName=${encodeURIComponent(input)}`, {
+                withCredentials: true
+            });
+            setSearchResults(response.data);
+        } catch (error) {
+            console.error("검색 중 오류 발생:", error);
+            setSearchResults([]);
         }
     };
 
+    /** 🔹 친구 추가 */
     const handleAddFriend = (user) => {
         if (!invitedUsers.find(invited => invited.id === user.id)) {
             setInvitedUsers([...invitedUsers, user]);
         }
     };
+
+    /** 🔹 초대한 유저 서버에 전송 */
+    const handleInvite = async () => {
+        console.log("🔍 저장된 accessToken:", localStorage.getItem("accessToken"));
+    
+        if (!projectName.trim()) {
+            alert("프로젝트명을 입력해주세요.");
+            return;
+        }
+    
+        if (invitedUsers.length === 0) {
+            alert("한 명 이상의 팀원을 초대해야 합니다.");
+            return;
+        }
+    
+        // 현재 로그인한 유저 정보 (localStorage에서 가져오기)
+        const currentUser = {
+            email: localStorage.getItem("userEmail"),  
+            nickname: localStorage.getItem("userNickname"),  
+            id: parseInt(localStorage.getItem("userId"), 10) 
+        };
+
+        console.log("로그인 유저정보 : ", currentUser);
+    
+        // API가 기대하는 invitations 데이터 변환 (email 포함)
+        const invitations = invitedUsers.map(user => ({
+            email: user.email, // ✅ 이메일 포함
+            nickname: user.nickName,
+            message: `${currentUser.email}님이 '${projectName}' 프로젝트에 ${user.nickName}님을 초대하셨습니다.`
+        }));
+    
+        // 요청 바디 구성
+        const requestBody = {
+            projectName,
+            invitations, // ✅ 초대한 친구 리스트
+            createdBy: currentUser
+        };
+    
+        try {
+            const response = await api.post("/api/projects/create", requestBody, {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem("accessToken")}` 
+                }
+            });
+    
+            if (response.status === 200) {
+                alert("✅ 프로젝트가 성공적으로 생성되고 초대가 전송되었습니다!");
+                navigate("/invitecheck", { state: { invitedUsers } });
+            }
+        } catch (error) {
+            console.error("❌ 초대 중 오류 발생:", error);
+            if (error.response) {
+                console.error("응답 상태 코드:", error.response.status);
+                console.error("응답 데이터:", error.response.data);
+            }
+            alert("초대에 실패했습니다.");
+        }
+    };
+    
+    
+    
 
     return (
         <S.Container>
@@ -130,7 +174,7 @@ function InvitePage() {
                     )}
                 </InvitedList>
             </S.Main>
-            <S.Button onClick={() => navigate("/invitecheck", { state: { invitedUsers } })}>
+            <S.Button onClick={handleInvite}>
                 팀원 초대 완료
             </S.Button>
         </S.Container>
