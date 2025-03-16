@@ -8,6 +8,7 @@ const MyPage = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState({ email: "", name: "" });
 
+
   useEffect(() => {
     // ✅ localStorage에서 사용자 정보 가져오기
     const storedUser = localStorage.getItem("user");
@@ -37,7 +38,11 @@ const MyPage = () => {
       {/* 프로필 영역 */}
       <div className="profile-section">
         <div className="profile-container">
-          <img src={bigprofileIcon} alt="프로필 아이콘" className="profile-icon" />
+          <img 
+            src={user?.picture || bigprofileIcon} 
+            alt="프로필 아이콘" 
+            className="profile-icon" 
+          />
         </div>
       </div>
 

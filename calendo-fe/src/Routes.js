@@ -8,9 +8,9 @@ import { InvitePage } from "./pages/invite/InvitePage";
 import CreatePlan from "./pages/create/createPlan";
 import CreateTime from "./pages/create/createTime";
 import CheckTime from "./pages/check/checkTime";
+import MyPage from "../src/pages/mypage/MyPage"
 import LoginCallback from "./pages/login/LoginCallback";
 
-import MyPage from "./pages/myPage/MyPage";
 import Alert from "./pages/alert/alertPage";
 
 import { InviteCheck } from "./pages/invite/InviteCheck";
