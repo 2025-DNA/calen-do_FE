@@ -47,13 +47,17 @@ const WholeSchedule = () => {
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
 
-  // ✅ `localStorage`에서 닉네임 불러오기
-  const storedNickname = localStorage.getItem("nickname") || "unknown";
-  const defaultProject = `${storedNickname}의 일정`;
+
+  // ✅ localStorage에서 닉네임 불러오기
+const storedUser = localStorage.getItem("user");
+const extractedNickname = storedUser ? JSON.parse(storedUser).email.split("@")[0] : "unknown";
+const defaultProject = `${extractedNickname}의 일정`;
+
+const [projects, setProjects] = useState([defaultProject]); // ✅ 기본 프로젝트 이름 변경
+const [selectedProject, setSelectedProject] = useState(defaultProject);
+
 
   // ✅ 프로젝트 목록 및 데이터 관리
-  const [projects, setProjects] = useState([defaultProject]);
-  const [selectedProject, setSelectedProject] = useState(defaultProject);
   const [projectData, setProjectData] = useState({
     [defaultProject]: { events: {}, todoLists: {} },
   });
@@ -103,24 +107,6 @@ useEffect(() => {
 }, []);
 
 
-// ✅ 선택된 프로젝트의 일정만 보여주도록 변경
-// const currentEvents = selectedProject === defaultProject
-//   ? Object.values(projectData).reduce((acc, project) => { 
-//       Object.keys(project.events || {}).forEach((date) => {
-//         acc[date] = [...(acc[date] || []), ...project.events[date]];
-//       });
-//       return acc;
-//     }, {})
-//   : projectData[selectedProject]?.events || {};
-
-///
-// useEffect(() => {
-//   if (projectData[selectedProject]) {
-//     setEvents(projectData[selectedProject]?.events || {});
-//     setTodoLists(projectData[selectedProject]?.todoLists || {}); // ✅ 삭제 반영된 상태 유지
-//   }
-// }, [selectedProject, projectData]);
-
 useEffect(() => {
   if (selectedProject === defaultProject) {
     // ✅ 메인 프로젝트에서는 모든 프로젝트 일정 합치기
@@ -151,9 +137,6 @@ useEffect(() => {
     setEvents(mergedEvents);
     setTodoLists(mergedTodos);
   } else {
-    // ✅ 선택한 프로젝트의 일정만 표시
-    // setEvents(projectData[selectedProject]?.events || {});
-    // setTodoLists(projectData[selectedProject]?.todoLists || {});
     if (selectedProject !== defaultProject) {
       setEvents(() => {
         const updatedEvents = projectData[selectedProject]?.events || {};
@@ -287,15 +270,7 @@ const handleEditTodo = (todo, index) => {
         ),
       },
     }));
-    
-    // setEvents((prev) => {
-    //   return Object.fromEntries(
-    //     Object.entries(prev).map(([date, eventList]) => [
-    //       date,
-    //       eventList.map(event => ({ ...event, color: newColor })), // 🔥 즉시 반영
-    //     ])
-    //   );
-    // }
+
     if (selectedProject !== defaultProject) {
       setEvents((prev) => ({
         ...prev,
@@ -422,23 +397,21 @@ useEffect(() => {
   }
 }, [selectedProject]);
 
-// ✅ 색상 변경 이벤트
-// const handleColorChange = async (e) => {
-//   const newColor = e.target.value;
-//   setSelectedColor(newColor);
 
-//   if (selectedProject) {
-//     await updateProjectTheme(selectedProject, newColor);
-//   }
-// };
+useEffect(() => {
+  // ✅ localStorage에서 사용자 정보 가져오기
+  const storedUser = localStorage.getItem("user");
 
-
-
-  useEffect(() => {
-    // ✅ `localStorage`에서 닉네임 가져오기
-    const storedNickname = localStorage.getItem("nickname") || "unknown";
-    setNickname(`${storedNickname}의 일정`);
-  }, []);
+  if (storedUser) {
+    try {
+      const parsedUser = JSON.parse(storedUser);
+      const extractedNickname = parsedUser.email ? parsedUser.email.split("@")[0] : "unknown"; // 이메일에서 닉네임 추출
+      setNickname(`${extractedNickname}의 일정`);
+    } catch (error) {
+      console.error("🚨 JSON 파싱 오류:", error);
+    }
+  }
+}, []);
   
 
   const [projectMembers, setProjectMembers] = useState({
@@ -484,39 +457,6 @@ const handleDayClick = (date) => {
   fetchEventsForDate(date);
 };
 
-// 📌 일정 추가 (POST 요청)
-// const addEvent = async () => {
-//   const dateKey = selectedDate.toDateString();
-//   const newEvent = {
-//     title: newTitle,
-//     type: eventType,
-//     color: selectedColor,
-//     time: selectedTime,
-//     repeat: repeatOption,
-//     alert: alertOption,
-//     completed: false,
-//   };
-
-//   try {
-//     const response = await fetch("/api/users/schedules", {
-//       method: "POST",
-//       headers: { "Content-Type": "application/json" },
-//       body: JSON.stringify({ ...newEvent, date: dateKey }),
-//     });
-
-//     if (!response.ok) throw new Error("일정 추가 실패");
-
-//     const savedEvent = await response.json(); // 서버에서 저장된 일정 반환
-//     setEvents((prev) => ({
-//       ...prev,
-//       [dateKey]: [...(prev[dateKey] || []), savedEvent],
-//     }));
-
-//     closeModal();
-//   } catch (error) {
-//     console.error("일정 추가 오류:", error);
-//   }
-// };
 
 // 📌 일정 수정 (PUT 요청)
 const updateEvent = async (scheduleId, updatedEvent) => {
@@ -735,11 +675,6 @@ const openProjectModal = () => {
   setIsProjectModalOpen(true);
 };
 
-// const closeProjectModal = () => {
-//   setIsProjectModalOpen(false);
-//   setNewProjectName("");
-// };
-
 // 이전 달로 이동
 const handlePrevMonth = () => {
   setSelectedDate((prevDate) => {
@@ -757,103 +692,6 @@ const handleNextMonth = () => {
     return nextMonth;
   });
 };
-
-
-//  // 새 프로젝트 추가
-//  const handleCreateProject = () => {
-//   if (newProjectName.trim() !== "" && !projects.includes(newProjectName)) {
-//     setProjects([...projects, newProjectName]);
-//     setProjectData({
-//       ...projectData,
-//       [newProjectName]: { events: {}, todoLists: {} }
-//     });
-//     setSelectedProject(newProjectName);
-//     closeProjectModal();
-//   }
-// };
-
-
-
-
-// const handleSave = () => {
-//   const dateKey = selectedDate.toDateString();
-
-//   const newItem = {
-//     title: newTitle,
-//     type: eventType,
-//     color: selectedColor,
-//     time: selectedTime,
-//     repeat: repeatOption,
-//     alert: alertOption,
-//     completed: false,
-//   };
-//     if (eventType === "Schedule") {
-//       // ✅ 일정(Schedule) 추가 로직
-//       let updatedEvents = { ...events };
-
-//       if (editingIndex !== null) {
-//           if (!updatedEvents[dateKey]) updatedEvents[dateKey] = [];
-//           updatedEvents[dateKey][editingIndex] = newItem;
-//           setEditingIndex(null);
-//       } else {
-//           if (!updatedEvents[dateKey]) updatedEvents[dateKey] = [];
-//           updatedEvents[dateKey].push(newItem);
-
-//           // 🔹 반복 일정 추가
-//           if (repeatOption === "weekly") {
-//               for (let i = 1; i <= 10; i++) {
-//                   let nextDate = new Date(selectedDate);
-//                   nextDate.setDate(nextDate.getDate() + i * 7);
-//                   const nextDateKey = nextDate.toDateString();
-//                   if (!updatedEvents[nextDateKey]) updatedEvents[nextDateKey] = [];
-//                   updatedEvents[nextDateKey].push({ ...newItem });
-//               }
-//           }
-
-//           if (repeatOption === "monthly") {
-//               for (let i = 1; i <= 12; i++) {
-//                   let nextDate = new Date(selectedDate);
-//                   nextDate.setMonth(nextDate.getMonth() + i);
-//                   const nextDateKey = nextDate.toDateString();
-//                   if (!updatedEvents[nextDateKey]) updatedEvents[nextDateKey] = [];
-//                   updatedEvents[nextDateKey].push({ ...newItem });
-//               }
-//           }
-
-//           if (repeatOption === "yearly") {
-//               for (let i = 1; i <= 5; i++) {
-//                   let nextDate = new Date(selectedDate);
-//                   nextDate.setFullYear(selectedDate.getFullYear() + i);
-//                   const nextDateKey = nextDate.toDateString();
-//                   if (!updatedEvents[nextDateKey]) updatedEvents[nextDateKey] = [];
-//                   updatedEvents[nextDateKey].push({ ...newItem });
-//               }
-//           }
-//       }
-
-//       setEvents(updatedEvents);
-
-//   } else if (eventType === "To-do") {
-//     // ✅ To-do 추가 및 수정 로직
-//     let updatedTodos = { ...todoLists };
-
-//     if (!updatedTodos[dateKey]) {
-//       updatedTodos[dateKey] = []; // ✅ 해당 날짜의 To-do 배열이 없으면 초기화
-//     }
-
-//     if (editingIndex !== null) {
-//       updatedTodos[dateKey][editingIndex] = newItem; // ✅ 기존 To-do 수정
-//       setEditingIndex(null);
-//     } else {
-//       updatedTodos[dateKey].push(newItem); // ✅ 새 To-do 추가
-//     }
-
-//     setTodoLists(updatedTodos);
-//   }
-
-//   closeModal();
-// };
-
 
 const handleSave = () => {
   let currentDate = new Date(selectedStartDate);
@@ -916,7 +754,6 @@ const handleSave = () => {
       }
       setEvents(updatedEvents);
     }else if (eventType === "To-do") {
-    // ✅ To-do 추가 및 수정 로직
     // ✅ To-do 추가 및 수정
     if (!updatedTodos[dateKey]) {
       updatedTodos[dateKey] = [];
@@ -1074,29 +911,6 @@ const addEvent = async () => {
           )}
         </div>
 
-    {/* <div className="dropdown-container">
-      <button className="dropdown-toggle" onClick={() => setDropdownOpen(!dropdownOpen)}>
-              {selectedProject} {nickname}▼
-            </button>
-            {dropdownOpen && (
-              <div className="dropdown-menu">
-                {projects.map((project, index) => (
-                  <div 
-                    key={index} 
-                    className="dropdown-item" 
-                    onClick={() => {
-                      setSelectedProject(project);
-                      setDropdownOpen(false);
-                    }}
-                  >
-                    {project}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div> */}
-
-          
         {/* ✅ 캘린더 색상 선택 버튼 추가 */}
         <input
             type="color"
@@ -1140,19 +954,6 @@ const addEvent = async () => {
 
 
       <div className="schedule-container">
-      {/* 상단 날짜 표시 + 네비게이션 역할 */}
-      {/* <div className="calendar-header">
-        <h2>
-        <button className="nav-button" onClick={handlePrevMonth}>◁</button>
-          {selectedDate.toLocaleString("en-US", {
-            month: "long",
-            day: "numeric",
-            year: "numeric",
-          })}
-          <button className="nav-button" onClick={handleNextMonth}>▷</button>
-        </h2>
-      </div> */}
-
       {/* 캘린더 */}
       <div className="calendar-container">
         <Calendar
@@ -1167,17 +968,7 @@ const addEvent = async () => {
           formatShortWeekday={(locale, date) =>
             date.toLocaleDateString("en-US", { weekday: "short" }) // ✅ Mon, Tue, Wed 형태로 변경
           }
-          // tileContent={({ date }) => (
-            
-          //   <div className="calendar-event-container">
-          //     {(events[date.toDateString()] || []).slice(0, 2).map((event, idx) => (
-          //       <div key={idx} className="calendar-event" 
-          //         style={{ backgroundColor: projectData[selectedProject]?.color || "#FFCDD2" }}> 
-          //         {event.title}
-          //       </div>
-          //     ))}
-          //   </div>
-          // )
+       
           tileContent={({ date }) => {
             const dateKey = date.toDateString();
             const dayEvents = events[dateKey] || [];
@@ -1371,24 +1162,6 @@ const addEvent = async () => {
     </select>
   </div>
 
-  {/* <div className="date-time" style={{ marginTop: '10px', borderBottom: '2px solid white', paddingBottom: '10px' }}>
-    <strong>{`${selectedDate.getMonth() + 1}월 ${selectedDate.getDate()}일 (${['일', '월', '화', '수', '목', '금', '토'][selectedDate.getDay()]})`}</strong>
-    <input
-      type="text"
-      placeholder="시간 설정 (3:00-4:00PM)"
-      value={selectedTime}
-      onChange={(e) => setSelectedTime(e.target.value)}
-      style={{
-        maxWidth: '100%',
-        boxSizing: 'border-box',
-        border: 'none',
-        backgroundColor: 'transparent',
-        fontSize: '0.8rem',
-        padding: '5px 0',
-        outline: 'none'
-      }}
-    />
-  </div> */}
 
  {/*📌 날짜 표시 추가*/}
   <div className="date-display" onClick={handleOpenDateTimePicker}>
