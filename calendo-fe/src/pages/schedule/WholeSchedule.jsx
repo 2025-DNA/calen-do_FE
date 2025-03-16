@@ -1133,7 +1133,7 @@ const addEvent = async () => {
         
         <div className="app-bar-right">
           <img src={alertIcon} className="icon" onClick={() => navigate("/alert")}/>
-          <img src={addProjectIcon} className="icon" onClick={() => navigate("/invite")} />
+          <img src={addProjectIcon} className="icon" onClick={() => setIsProjectModalOpen(true)} />
           <img src={timeIcon} className="icon" onClick={() => navigate("/plan")}/>
           <img src={profileIcon} className="icon" onClick={() => navigate("/mypage")} />
         
