@@ -10,17 +10,17 @@ export const ModalOverlay = styled.div`
     display: flex;
     justify-content: center;
     align-items: center;
+    z-index: 1000;
 `;
 
 export const ModalContent = styled.div`
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 10px;
-    background: #FFF;
+    background: #FFFFFF;
     padding: 20px;
     border-radius: 15px;
-    width: 70%;
+    width: 80%;
     position: relative;
 `;
 
@@ -33,14 +33,14 @@ export const Row = styled.div`
 export const Button = styled.div`
     display: flex;
     width: 92px;
-    height: 34px;
+    height: 43px;
     justify-content: center;
     align-items: center;
     cursor: pointer;
-    border-radius: 36px;
-    margin: 25px;
-    background: #EEEEEE;
-    color: #000;
+    border-radius: 40px;
+    margin: 20px;
+    background:${(props)=> props.color || "#EEEEEE"};
+    color:rgb(48, 48, 48);
     font-size: 18px;
     font-style: normal;
     font-weight: bold;
@@ -49,7 +49,8 @@ export const Button = styled.div`
 
 export const Text = styled.div`
     font-size: 20px;
+    color:rgb(34, 34, 34);
     font-style: normal;
     font-weight: bold;
-    padding: 20px;
+    padding: 15px;
 `;

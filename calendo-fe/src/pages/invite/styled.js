@@ -60,13 +60,19 @@ export const ResultItem = styled.div`
     font-size: 20px;
 `;
 
-export const AddFriendButton = styled.button`
-    background: none;
-    border: none;
-    font-size: 18px;
-    cursor: pointer;
 
-    &:hover {
-        color: #f88b8b;
-    }
+export const Button = styled.div`
+    display: flex;
+    align-items: center;  /* 수직 가운데 정렬 */
+    justify-content: center; /* 수평 가운데 정렬 */
+    width: 70%;
+    background-color: #EA6B6B;
+    border-radius: 12px;
+    color: white;
+    padding: 15px 5px;
+    font-size: 20px;
+    font-weight: 600;
+    text-align: center;
+    margin-bottom: 40px;
 `;
+
