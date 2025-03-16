@@ -463,13 +463,11 @@
 // };
 
 // export default Login;
-
-
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../login/Login.css";
 import googleIcon from "../../assets/images/google.svg";
-import api from "../../utils/api";
+import api from "../../utils/api"; // ✅ API 요청 파일
 
 const Login = () => {
   const navigate = useNavigate();
@@ -477,58 +475,56 @@ const Login = () => {
   const [userData, setUserData] = useState(null);
 
   const handleLogin = () => {
+    // ✅ OAuth 인증 요청을 HTTPS로 설정
     window.location.href = `https://calendo.site/oauth2/authorization/google`;
   };
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get("token");
-    const refreshToken = urlParams.get("refreshToken"); 
+    const token = urlParams.get("token"); // ✅ 받은 Access Token
 
+    console.log("🔹 받은 Access Token:", token);
 
     if (!token || hasRun.current) return;
     hasRun.current = true;
 
-    console.log("🔹 받은 Access Token:", token);
-    console.log("🔹 받은 Refresh Token:", refreshToken);
+    // ✅ 토큰 저장 및 URL 정리
+    localStorage.setItem("accessToken", token);
+    console.log("🔹 저장된 accessToken:", localStorage.getItem("accessToken"));
 
-    if (token && refreshToken) {
-      localStorage.setItem("accessToken", token);
-      localStorage.setItem("refreshToken", refreshToken); // ✅ Refresh Token 저장
-      console.log("🔹 저장된 accessToken:", localStorage.getItem("accessToken"));
+    setTimeout(() => {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }, 500);
 
-      alert("로그인 성공! 메인 페이지로 이동합니다.");
-
-      setTimeout(() => {
-        window.history.replaceState({}, document.title, window.location.pathname);
-      }, 500);
-
-      navigate("/whole-schedule", { replace: true });
-    } else {
-      alert("로그인 실패! 다시 시도해주세요.");
-      navigate("/login");
-    }
+    // ✅ 사용자 정보 가져오기
+    fetchUserData(token);
   }, [navigate]);
 
-  // ✅ 사용자 정보 가져오기
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        console.log("🔹 사용자 정보 요청 시작");
+  const fetchUserData = async (token) => {
+    try {
+      console.log("🔹 사용자 정보 요청 시작");
 
-        const response = await api.get("/users/me"); // ✅ api.js를 사용하여 요청
-        console.log("✅ 사용자 정보:", response.data);
-        setUserData(response.data);
-      } catch (error) {
-        console.error("❌ 사용자 정보 요청 실패:", error);
-      }
-    };
+      const response = await api.get("/users/me", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-    fetchUserData();
-  }, []);
+      console.log("✅ 사용자 정보:", response.data);
 
+      // ✅ 사용자 정보를 localStorage에 저장
+      localStorage.setItem("user", JSON.stringify(response.data));
+      console.log("📌 localStorage에 저장된 user:", localStorage.getItem("user"));
+      
+      setUserData(response.data);
 
 
+      // ✅ 로그인 성공 시 페이지 이동
+      navigate("/whole-schedule", { replace: true });
+    } catch (error) {
+      console.error("❌ 사용자 정보 요청 실패:", error);
+      alert("사용자 정보를 불러올 수 없습니다. 다시 로그인해주세요.");
+      navigate("/login");
+    }
+  };
 
   return (
     <div className="login-container">
@@ -562,5 +558,3 @@ const Login = () => {
 };
 
 export default Login;
-
-
