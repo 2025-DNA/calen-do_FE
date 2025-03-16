@@ -18,8 +18,6 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.module.css";
 
 
-
-
 Modal.setAppElement("#root");
 
 const WholeSchedule = () => {
@@ -36,14 +34,11 @@ const WholeSchedule = () => {
   const [deleteConfirm, setDeleteConfirm] = useState({ show: false, item: null, isTodo: false });
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [editingIndex, setEditingIndex] = useState(null);
+  const [nickname, setNickname] = useState();
 
 
   const [selectedColor, setSelectedColor] = useState("#FFCDD2"); // 기본 색상 설정
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [nickname, setNickname] = useState("");
-
-
- 
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
 
@@ -236,166 +231,223 @@ const handleEditTodo = (todo, index) => {
   setIsModalOpen(true);
 };
 
-  const userId = localStorage.getItem("userId"); // ✅ 사용자 ID 가져오기
-  // ✅ 초기 색상 불러오기 (GET 요청)
-  useEffect(() => {
-    if (!userId) return;
+  // const userId = localStorage.getItem("userId"); // ✅ 사용자 ID 가져오기
+  // // ✅ 초기 색상 불러오기 (GET 요청)
+  // useEffect(() => {
+  //   if (!userId) return;
 
-    fetch(`/api/users/${userId}/color`)
-      .then(response => response.json())
-      .then(data => {
-        if (data.color) {
-          setSelectedColor(data.color); // 서버에서 저장된 색상 적용
-        }
-      })
-      .catch(error => console.error("메인 테마 색상 불러오기 실패:", error));
-  }, [userId]);
+  //   fetch(`/api/users/${userId}/color`)
+  //     .then(response => response.json())
+  //     .then(data => {
+  //       if (data.color) {
+  //         setSelectedColor(data.color); // 서버에서 저장된 색상 적용
+  //       }
+  //     })
+  //     .catch(error => console.error("메인 테마 색상 불러오기 실패:", error));
+  // }, [userId]);
 
   // ✅ 색상 선택 이벤트
-  const handleColorChange = async (e) => {
-    const newColor = e.target.value;
-    setSelectedColor(newColor);
+//   const handleColorChange = async (e) => {
+//     const newColor = e.target.value;
+//     setSelectedColor(newColor);
   
-    // 🔥 현재 선택된 프로젝트 색상 변경
-    setProjectData((prev) => ({
-      ...prev,
-      [selectedProject]: {
-        ...prev[selectedProject],
-        color: newColor,
-        events: Object.fromEntries(
-          Object.entries(prev[selectedProject]?.events || {}).map(([date, eventList]) => [
-            date,
-            eventList.map(event => ({ ...event, color: newColor })), // 🔥 일정 색상 변경
-          ])
-        ),
-      },
-    }));
+//     // 🔥 현재 선택된 프로젝트 색상 변경
+//     setProjectData((prev) => ({
+//       ...prev,
+//       [selectedProject]: {
+//         ...prev[selectedProject],
+//         color: newColor,
+//         events: Object.fromEntries(
+//           Object.entries(prev[selectedProject]?.events || {}).map(([date, eventList]) => [
+//             date,
+//             eventList.map(event => ({ ...event, color: newColor })), // 🔥 일정 색상 변경
+//           ])
+//         ),
+//       },
+//     }));
 
-    if (selectedProject !== defaultProject) {
-      setEvents((prev) => ({
-        ...prev,
-        ...Object.fromEntries(
-          Object.entries(prev).map(([date, eventList]) => [
-            date,
-            eventList.map(event =>
-              event.color === projectData[selectedProject]?.color ? { ...event, color: newColor } : event
-            ),
-          ])
-        ),
-      }));
-    };
+//     if (selectedProject !== defaultProject) {
+//       setEvents((prev) => ({
+//         ...prev,
+//         ...Object.fromEntries(
+//           Object.entries(prev).map(([date, eventList]) => [
+//             date,
+//             eventList.map(event =>
+//               event.color === projectData[selectedProject]?.color ? { ...event, color: newColor } : event
+//             ),
+//           ])
+//         ),
+//       }));
+//     };
     
 
-  if (!userId) return;
+//   if (!userId) return;
 
-  try {
-    // 색상이 처음 선택된 경우 (POST 요청)
-    const response = await fetch(`api/projects/{projectId}/theme`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ color: newColor }),
-    });
+//   try {
+//     // 색상이 처음 선택된 경우 (POST 요청)
+//     const response = await fetch(`api/projects/{projectId}/theme`, {
+//       method: "POST",
+//       headers: { "Content-Type": "application/json" },
+//       body: JSON.stringify({ color: newColor }),
+//     });
 
-    if (!response.ok) {
-      throw new Error("색상 저장 실패");
-    }
-  } catch (error) {
-    console.error("메인 테마 색상 저장 오류:", error);
-  }
-};
+//     if (!response.ok) {
+//       throw new Error("색상 저장 실패");
+//     }
+//   } catch (error) {
+//     console.error("메인 테마 색상 저장 오류:", error);
+//   }
+// };
+
+// ✅ 색상 선택 이벤트
+// const handleColorChange = async (e) => {
+//   const newColor = e.target.value;
+//   setSelectedColor(newColor);
+
+//   // 🔥 현재 선택된 프로젝트 색상 변경
+//   setProjectData((prev) => ({
+//     ...prev,
+//     [selectedProject]: {
+//       ...prev[selectedProject],
+//       color: newColor,
+//       events: Object.fromEntries(
+//         Object.entries(prev[selectedProject]?.events || {}).map(([date, eventList]) => [
+//           date,
+//           eventList.map(event => ({ ...event, color: newColor })), // 🔥 일정 색상 변경
+//         ])
+//       ),
+//     },
+//   }));
+
+//   if (selectedProject !== defaultProject) {
+//     setEvents((prev) => ({
+//       ...prev,
+//       ...Object.fromEntries(
+//         Object.entries(prev).map(([date, eventList]) => [
+//           date,
+//           eventList.map(event =>
+//             event.color === projectData[selectedProject]?.color ? { ...event, color: newColor } : event
+//           ),
+//         ])
+//       ),
+//     }));
+//   }
+
+//   // ✅ API 요청 (메인 테마 or 프로젝트 테마 구분)
+//   if (!userId) return;
+
+//   try {
+//     const accessToken = localStorage.getItem("access_token"); // 🔥 JWT 토큰 가져오기
+
+//     if (selectedProject === defaultProject) {
+//       // ✅ 메인 테마 색상 변경 (POST 요청)
+//       const response = await fetch("/api/change-theme", {
+//         method: "POST",
+//         headers: {
+//           "Content-Type": "application/json",
+//           Authorization: `Bearer ${accessToken}`, // 🔥 JWT 인증 추가
+//         },
+//         body: JSON.stringify({ temaColor: newColor }),
+//       });
+
+//       if (!response.ok) throw new Error("메인 테마 색상 저장 실패");
+
+//       const data = await response.json();
+//       console.log("✅ 메인 테마 색상 변경 성공:", data);
+
+//       // ✅ 변경된 색상 반영
+//       if (data.temaColor) {
+//         setSelectedColor(data.temaColor);
+//       }
+//     } else {
+//       // ✅ 프로젝트 테마 색상 변경 (PUT 요청)
+//       const encodedProjectId = encodeURIComponent(selectedProject);
+
+//       const response = await fetch(`/api/projects/${encodedProjectId}/mainTheme`, {
+//         method: "PUT",
+//         headers: {
+//           "Content-Type": "application/json",
+//           Authorization: `Bearer ${accessToken}`, // 🔥 JWT 인증 추가
+//         },
+//         body: JSON.stringify({ temaColor: newColor }),
+//       });
+
+//       if (!response.ok) throw new Error("프로젝트 테마 색상 변경 실패");
+
+//       const data = await response.json();
+//       console.log("✅ 프로젝트 테마 색상 변경 성공:", data);
+
+//       if (data.newColor) {
+//         setSelectedColor(data.newColor);
+
+//         setProjectData((prev) => ({
+//           ...prev,
+//           [selectedProject]: {
+//             ...prev[selectedProject],
+//             color: data.newColor,
+//           },
+//         }));
+//       }
+//     }
+//   } catch (error) {
+//     console.error("🚨 테마 색상 변경 오류:", error);
+//   }
+// };
+
+
+
 
 // ✅ 색상 변경 이벤트 (PUT 요청)
-const updateColor = async (newColor) => {
-  setSelectedColor(newColor);
+// const updateColor = async (newColor) => {
+//   setSelectedColor(newColor);
 
-  if (!userId) return;
+//   if (!userId) return;
 
-  try {
-    const response = await fetch(`change-theme`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ color: newColor }),
-    });
+//   try {
+//     const response = await fetch(`change-theme`, {
+//       method: "PUT",
+//       headers: { "Content-Type": "application/json" },
+//       body: JSON.stringify({ color: newColor }),
+//     });
 
-    if (!response.ok) {
-      throw new Error("색상 변경 실패");
-    }
-  } catch (error) {
-    console.error("메인 테마 색상 변경 오류:", error);
-  }
-};
-
-// 프로젝트 테마 색상 조회 (GET 요청)
-const fetchProjectTheme = async (projectId) => {
-  try {
-    const response = await fetch(`/api/projects/${projectId}/mainTheme`);
-    if (!response.ok) throw new Error("프로젝트 테마 색상 조회 실패");
-
-    const data = await response.json();
-    if (data.color) {
-      setSelectedColor(data.color); // 🔥 프로젝트 색상 반영
-
-
-
-      setEvents((prev) => {
-        return Object.fromEntries(
-          Object.entries(prev).map(([date, eventList]) => [
-            date,
-            eventList.map(event => ({ ...event, color: data.color })), // ✅ 색상 업데이트
-          ])
-        );
-      });
-
-      setProjectData((prev) => ({
-        ...prev,
-        [projectId]: {
-          ...prev[projectId],
-          color: data.color,
-        },
-      }));
-
-
-
-
-
-
-
-    }
-  } catch (error) {
-    console.error("프로젝트 테마 색상 조회 오류:", error);
-  }
-};
+//     if (!response.ok) {
+//       throw new Error("색상 변경 실패");
+//     }
+//   } catch (error) {
+//     console.error("메인 테마 색상 변경 오류:", error);
+//   }
+// };
 
 // 프로젝트 테마 색상 변경 (PUT 요청)
-const updateProjectTheme = async (projectId, newColor) => {
-  try {
-    const response = await fetch(`/api/projects/${projectId}/mainTheme`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ color: newColor }),
-    });
+// const updateProjectTheme = async (projectId, newColor) => {
+//   try {
+//     const response = await fetch(`/api/projects/${projectId}/mainTheme`, {
+//       method: "PUT",
+//       headers: { "Content-Type": "application/json" },
+//       body: JSON.stringify({ color: newColor }),
+//     });
 
-    if (!response.ok) throw new Error("프로젝트 테마 색상 변경 실패");
+//     if (!response.ok) throw new Error("프로젝트 테마 색상 변경 실패");
 
-    // ✅ 변경된 색상을 상태에 반영
-    setProjectData((prev) => ({
-      ...prev,
-      [projectId]: {
-        ...prev[projectId],
-        color: newColor,
-      },
-    }));
-  } catch (error) {
-    console.error("프로젝트 테마 색상 변경 오류:", error);
-  }
-};
+//     // ✅ 변경된 색상을 상태에 반영
+//     setProjectData((prev) => ({
+//       ...prev,
+//       [projectId]: {
+//         ...prev[projectId],
+//         color: newColor,
+//       },
+//     }));
+//   } catch (error) {
+//     console.error("프로젝트 테마 색상 변경 오류:", error);
+//   }
+// };
 
 // ✅ 프로젝트 변경 시 테마 색상 조회
-useEffect(() => {
-  if (selectedProject) {
-    fetchProjectTheme(selectedProject);
-  }
-}, [selectedProject]);
+// useEffect(() => {
+//   if (selectedProject) {
+//     fetchProjectTheme(selectedProject);
+//   }
+// }, [selectedProject]);
 
 
 useEffect(() => {
@@ -412,6 +464,164 @@ useEffect(() => {
     }
   }
 }, []);
+
+
+// ✅ 메인 테마 색상 조회 (GET 요청)
+const fetchMainThemeColor = async () => {
+  try {
+    const accessToken = localStorage.getItem("access_token");
+
+    const response = await fetch("/api/projects/mainTheme", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`, // ✅ JWT 토큰 포함
+      },
+    });
+
+    if (!response.ok) throw new Error(`메인 테마 색상 조회 실패: ${response.status}`);
+
+    const data = await response.json();
+    console.log("✅ 메인 테마 색상 API 응답:", data);
+
+    if (data.temaColor) {
+      setSelectedColor(data.temaColor);
+    }
+  } catch (error) {
+    console.error("🚨 메인 테마 색상 조회 오류:", error);
+  }
+};
+
+// ✅ 프로젝트 테마 색상 조회 (GET 요청)
+const fetchProjectTheme = async (projectId) => {
+  try {
+    const encodedProjectId = encodeURIComponent(projectId);
+    const accessToken = localStorage.getItem("access_token");
+
+    const response = await fetch(`/api/projects/${encodedProjectId}/mainTheme`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!response.ok) throw new Error(`프로젝트 테마 색상 조회 실패: ${response.status}`);
+
+    const data = await response.json();
+    console.log("✅ 프로젝트 테마 색상 API 응답:", data);
+
+    if (data.temaColor) {
+      setSelectedColor(data.temaColor);
+
+      // ✅ 프로젝트 데이터에도 색상 반영
+      setProjectData((prev) => ({
+        ...prev,
+          [projectId]: { ...prev[projectId], color: data.temaColor },
+      }));
+    }
+  } catch (error) {
+    console.error("🚨 프로젝트 테마 색상 조회 오류:", error);
+  }
+};
+
+// ✅ 메인 테마 색상 변경 (POST 요청)
+const updateMainThemeColor = async (newColor) => {
+  try {
+    const accessToken = localStorage.getItem("access_token");
+
+    const response = await fetch("/api/change-theme", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ temaColor: newColor }),
+    });
+
+    if (!response.ok) throw new Error(`메인 테마 색상 변경 실패: ${response.status}`);
+    setSelectedColor(newColor);
+  } catch (error) {
+    console.error("🚨 메인 테마 색상 변경 오류:", error);
+  }
+};
+
+// ✅ 프로젝트 테마 색상 변경 (PUT 요청)
+const updateProjectThemeColor = async (projectId, newColor) => {
+  try {
+    const encodedProjectId = encodeURIComponent(projectId);
+    const accessToken = localStorage.getItem("access_token");
+
+    const response = await fetch(`/api/projects/${encodedProjectId}/mainTheme`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ temaColor: newColor }),
+    });
+
+    if (!response.ok) throw new Error(`프로젝트 테마 색상 변경 실패: ${response.status}`);
+
+    const data = await response.json();
+    console.log("✅ 프로젝트 테마 색상 변경 응답:", data);
+
+    if (data.newColor) {
+      setSelectedColor(data.newColor);
+
+      setProjectData((prev) => ({
+        ...prev,
+        [projectId]: {
+          ...prev[projectId],
+          color: data.newColor,
+        },
+      }));
+    }
+  } catch (error) {
+    console.error("🚨 프로젝트 테마 색상 변경 오류:", error);
+  }
+};
+
+const handleColorChange = (e) => {
+  const newColor = e.target.value;
+  setSelectedColor(newColor);
+  setProjectData((prev) => ({
+    ...prev,
+    [selectedProject]: {
+      ...prev[selectedProject],
+      color: newColor,
+      events: Object.fromEntries(
+        Object.entries(prev[selectedProject]?.events || {}).map(([date, eventList]) => [
+          date,
+          eventList.map((event) => ({ ...event, color: newColor })),
+        ])
+      ),
+    },
+  }));
+
+  if (selectedProject === defaultProject) {
+    updateMainThemeColor(newColor);
+  } else {
+    updateProjectThemeColor(selectedProject, newColor);
+  }
+};
+
+useEffect(() => {
+  if (selectedProject === defaultProject) {
+    fetchMainThemeColor();
+  } else {
+    fetchProjectTheme(selectedProject);
+  }
+}, [selectedProject]);
+
+
+
+
+
+
+
+
+
   
 
   const [projectMembers, setProjectMembers] = useState({
@@ -916,14 +1126,14 @@ const addEvent = async () => {
             type="color"
             value={selectedColor}
             onChange={handleColorChange}
-            onBlur={(e) => updateColor(e.target.value)}
+            onBlur={(e) => updateMainThemeColor(e.target.value)}
             className="color-picker"
           />
         </div>
         
         <div className="app-bar-right">
           <img src={alertIcon} className="icon" onClick={() => navigate("/alert")}/>
-          <img src={addProjectIcon} className="icon" onClick={() => setIsProjectModalOpen(true)} />
+          <img src={addProjectIcon} className="icon" onClick={() => navigate("/invite")} />
           <img src={timeIcon} className="icon" onClick={() => navigate("/plan")}/>
           <img src={profileIcon} className="icon" onClick={() => navigate("/mypage")} />
         
