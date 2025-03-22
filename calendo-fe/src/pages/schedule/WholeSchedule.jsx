@@ -190,84 +190,56 @@ useEffect(() => {
 }, [selectedProject, projectData]);
 
 
-// const addTodo = async () => {
-//   const dateKey = selectedDate.toDateString();
-//   const newTodo = {
-//     title: newTitle,
-//     date: dateKey,
-//     completed: false,
-//   };
 
-//   try {
-//     const response = await fetch("/api/users/todo", {
-//       method: "POST",
-//       headers: { "Content-Type": "application/json" },
-//       body: JSON.stringify(newTodo),
-//     });
+const addTodo = async (dateKey) => {
+  const token = localStorage.getItem("access-token") ||
+                localStorage.getItem("accessToken") ||
+                localStorage.getItem("jwt_token");
 
-//     if (!response.ok) throw new Error("투두 추가 실패");
+  if (!token) {
+    console.error("❌ Access Token이 없습니다!");
+    return null;
+  }
 
-//     const savedTodo = await response.json();
-
-//     // ✅ 선택된 프로젝트의 투두 리스트만 업데이트
-//     setProjectData((prev) => ({
-//       ...prev,
-//       [selectedProject]: {
-//         ...prev[selectedProject],
-//         todoLists: {
-//           ...prev[selectedProject]?.todoLists,
-//           [dateKey]: [...(prev[selectedProject]?.todoLists[dateKey] || []), savedTodo],
-//         },
-//       },
-//     }));
-//   } catch (error) {
-//     console.error("투두 추가 오류:", error);
-//   }
-
-//   closeModal();
-// };
-const addTodo = async () => {
-  const dateKey = selectedDate.toDateString();
-  const newTodo = {
-    title: newTitle,
-    date: dateKey,
-    completed: false,
-  };
+  const body = { title: newTitle };
 
   try {
-    const response = await fetch("/api/users/todo", {
+    const response = await fetch(`https://calendo.site/api/todos/add`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newTodo),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) throw new Error("투두 추가 실패");
 
-    const savedTodo = await response.json();
+    const contentType = response.headers.get("content-type");
 
-    if (!savedTodo.id) {
-      console.error("서버에서 받은 투두 ID가 없습니다:", savedTodo);
-      return;
+    if (contentType && contentType.includes("application/json")) {
+      const savedTodo = await response.json();
+      console.log("✅ 투두 추가 성공 (JSON):", savedTodo);
+      return savedTodo;
+    } else {
+      const text = await response.text();
+      console.log("✅ 투두 추가 성공 (문자열):", text);
+      // 백엔드가 실제 투두 객체를 안 보내면 여기선 null 반환
+      return {
+        id: Date.now(), // 임시 ID
+        title: newTitle,
+        completed: false
+      };
     }
-
-    console.log("✅ 추가된 투두:", savedTodo);
-
-    setProjectData((prev) => ({
-      ...prev,
-      [selectedProject]: {
-        ...prev[selectedProject],
-        todoLists: {
-          ...prev[selectedProject]?.todoLists,
-          [dateKey]: [...(prev[selectedProject]?.todoLists[dateKey] || []), savedTodo],
-        },
-      },
-    }));
   } catch (error) {
     console.error("투두 추가 오류:", error);
+    return null;
   }
-
-  closeModal();
 };
+
+
+
+
 
 
 
@@ -823,31 +795,78 @@ const fetchTodo = async (todoId) => {
 //   }
 // };
 // 📌 To-do 수정 (PUT 요청)
-const updateTodo = async (todoId, updatedTodo) => {
+// const updateTodo = async (todoId, updatedTodo) => {
+//   try {
+//     const response = await fetch(`/api/todo/${todoId}`, {
+//       method: "PUT",
+//       headers: { "Content-Type": "application/json" },
+//       body: JSON.stringify(updatedTodo),
+//     });
+
+//     if (!response.ok) throw new Error("투두 수정 실패");
+
+//     setTodoLists((prev) => {
+//       const dateKey = selectedDate.toDateString();
+//       return {
+//         ...prev,
+//         [dateKey]: prev[dateKey].map((todo) =>
+//           todo.id === todoId ? { ...todo, ...updatedTodo } : todo
+//         ),
+//       };
+//     });
+
+//     closeModal();
+//   } catch (error) {
+//     console.error("투두 수정 오류:", error);
+//   }
+// };
+
+//투두 수정
+const updateTodo = async (todoId, newTitle) => {
+  const token = localStorage.getItem("access-token") ||
+                localStorage.getItem("accessToken") ||
+                localStorage.getItem("jwt_token");
+
+  if (!token) {
+    console.error("❌ Access Token이 없습니다!");
+    return;
+  }
+
   try {
-    const response = await fetch(`/api/todo/${todoId}`, {
+    const response = await fetch(`https://calendo.site/api/todos/update/${todoId}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updatedTodo),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({ title: newTitle }),
     });
 
     if (!response.ok) throw new Error("투두 수정 실패");
 
-    setTodoLists((prev) => {
-      const dateKey = selectedDate.toDateString();
-      return {
-        ...prev,
-        [dateKey]: prev[dateKey].map((todo) =>
-          todo.id === todoId ? { ...todo, ...updatedTodo } : todo
-        ),
-      };
-    });
+    const result = await response.json();
+    console.log("✅ 투두 수정 성공:", result);
+
+    // 프론트 상태 업데이트
+    const dateKey = selectedDate.toDateString();
+    setTodoLists((prev) => ({
+      ...prev,
+      [dateKey]: prev[dateKey].map((todo) =>
+        todo.id === todoId ? { ...todo, title: newTitle } : todo
+      ),
+    }));
 
     closeModal();
   } catch (error) {
-    console.error("투두 수정 오류:", error);
+    console.error("❌ 투두 수정 오류:", error);
   }
 };
+
+
+
+
+
+
 // 📌 To-do 삭제 (PUT 요청)
 // const deleteTodo = async (todoId) => {
 //   const dateKey = selectedDate.toDateString();
@@ -1055,12 +1074,42 @@ const handleSave = async () => {
       if (!updatedTodos[dateKey]) updatedTodos[dateKey] = [];
 
       if (editingIndex !== null) {
-        updatedTodos[dateKey] = updatedTodos[dateKey].map((todo, idx) =>
-          idx === editingIndex ? newItem : todo
-        );
+        const editingTodo = updatedTodos[dateKey][editingIndex];
+        if (editingTodo?.id) {
+          await updateTodo(editingTodo.id, newTitle);
+        } else {
+          console.error("❌ 수정할 투두에 ID가 없습니다:", editingTodo);
+        }
         setEditingIndex(null);
+      
+        updatedTodos[dateKey][editingIndex] = newItem;
+       
+        // updatedTodos[dateKey] = updatedTodos[dateKey].map((todo, idx) =>
+        //   idx === editingIndex ? newItem : todo
+        // );
+        // setEditingIndex(null);
       } else {
-        updatedTodos[dateKey].push(newItem);
+        // 서버에 투두 추가 요청
+        const addedTodo = await addTodo(currentDate, newTitle);
+
+        //updatedTodos[dateKey].push(newItem);
+      
+
+        if (addedTodo) {
+          const newTodoItem = {
+            id: addedTodo.id,
+            title: addedTodo.title,
+            checked: addedTodo.checked,
+            userId: addedTodo.userId,
+            type: "To-do",
+            color: projectData[selectedProject]?.color || "#FFCDD2",
+            time: selectedTime,
+            repeat: repeatOption,
+            alert: alertOption,
+            completed: addedTodo.checked || false
+          };
+          updatedTodos[dateKey].push(newTodoItem);
+        }
       }
 
       setTodoLists(updatedTodos);
@@ -1166,131 +1215,66 @@ const addEvent = async () => {
   }
 };
 
-
-
-
-
-
-
-
-  // const handleDelete = (item, isTodo) => {
-  //   const dateKey = selectedDate.toDateString();
-
-  //   if (isTodo) {
-  //     setTodoLists((prev) => ({
-  //       ...prev,
-  //       [dateKey]: prev[dateKey]?.filter((todo) => todo !== item),
-  //     }));
-  //   } else {
-  //     setEvents((prev) => ({
-  //       ...prev,
-  //       [dateKey]: prev[dateKey]?.filter((event) => event !== item),
-  //     }));
-  //   }
-
-  //   setDeleteConfirm({ show: false, item: null, isTodo: false });
-  // };
-
-  // const handleDelete = async (item, isTodo) => {
-  //   const dateKey = selectedDate.toDateString();
   
-  //   if (isTodo) {
-  //     try {
-  //       const response = await fetch(`/api/users/todo/${item.id}`, {
-  //         method: "DELETE",
-  //       });
-  
-  //       if (!response.ok) throw new Error("투두 삭제 실패");
-  
-  //       setTodoLists((prev) => {
-  //         const updatedTodos = { ...prev };
-  //         updatedTodos[dateKey] = updatedTodos[dateKey].filter((todo) => todo.id !== item.id);
-  //         if (updatedTodos[dateKey].length === 0) {
-  //           delete updatedTodos[dateKey]; // 해당 날짜의 투두가 없으면 삭제
-  //         }
-  //         return updatedTodos;
-  //       });
-  
-  //       setProjectData((prev) => {
-  //         const updatedProjectData = { ...prev };
-  //         updatedProjectData[selectedProject].todoLists[dateKey] = updatedProjectData[selectedProject].todoLists[dateKey].filter((todo) => todo.id !== item.id);
-          
-  //         if (updatedProjectData[selectedProject].todoLists[dateKey].length === 0) {
-  //           delete updatedProjectData[selectedProject].todoLists[dateKey];
-  //         }
-  
-  //         return updatedProjectData;
-  //       });
-  
-  //     } catch (error) {
-  //       console.error("투두 삭제 오류:", error);
-  //     }
-  //   } else {
-  //     try {
-  //       const response = await fetch(`/api/users/schedules/${item.id}`, {
-  //         method: "DELETE",
-  //       });
-  
-  //       if (!response.ok) throw new Error("일정 삭제 실패");
-  
-  //       setEvents((prev) => ({
-  //         ...prev,
-  //         [dateKey]: prev[dateKey]?.filter((event) => event.id !== item.id),
-  //       }));
-  //     } catch (error) {
-  //       console.error("일정 삭제 오류:", error);
-  //     }
-  //   }
-  
-  //   setDeleteConfirm({ show: false, item: null, isTodo: false });
-  // };
-  
-  const handleDelete = async (item, isTodo) => {
-    if (!item?.id) {
-      console.error("❌ 삭제할 항목의 ID가 없습니다. 데이터 확인 필요:", item);
-      return;
+const handleDelete = async (item, isTodo) => {
+  if (!item?.id) {
+    console.error("❌ 삭제할 항목의 ID가 없습니다. 데이터 확인 필요:", item);
+    return;
+  }
+
+  const token = localStorage.getItem("access-token") ||
+                localStorage.getItem("accessToken") ||
+                localStorage.getItem("jwt_token");
+
+  if (!token) {
+    console.error("❌ Access Token이 없습니다!");
+    return;
+  }
+
+  const dateKey = selectedDate.toDateString();
+
+  // 🔁 To-do 삭제 경로는 그대로 두고 일정 삭제 경로만 수정
+  const url = isTodo
+    ? `https://calendo.site/api/todo/${item.id}`
+    : `https://calendo.site/delete-schedule/${item.id}`;
+
+  console.log("🚀 삭제 요청 URL:", url);
+
+  try {
+    const response = await fetch(url, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await response.text();
+      console.error("삭제 실패:", errorMessage);
+      throw new Error(errorMessage);
     }
-  
-    const dateKey = selectedDate.toDateString();
-    const url = isTodo
-      ? `https://calendo.site/api/todo/${item.id}`
-      : `https://calendo.site/api/schedules/${item.id}`;
-  
-    console.log("🚀 삭제 요청 URL:", url);
-  
-    try {
-      const response = await fetch(url, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-  
-      if (!response.ok) {
-        const errorMessage = await response.text();
-        console.error("삭제 실패:", errorMessage);
-        throw new Error(errorMessage);
-      }
-  
-      console.log("✅ 삭제 성공:", item.id);
-  
-      if (isTodo) {
-        setTodoLists((prev) => ({
-          ...prev,
-          [dateKey]: prev[dateKey].filter((todo) => todo.id !== item.id),
-        }));
-      } else {
-        setEvents((prev) => ({
-          ...prev,
-          [dateKey]: prev[dateKey].filter((event) => event.id !== item.id),
-        }));
-      }
-    } catch (error) {
-      console.error("삭제 오류:", error);
+
+    console.log("✅ 삭제 성공:", item.id);
+
+    if (isTodo) {
+      setTodoLists((prev) => ({
+        ...prev,
+        [dateKey]: prev[dateKey].filter((todo) => todo.id !== item.id),
+      }));
+    } else {
+      setEvents((prev) => ({
+        ...prev,
+        [dateKey]: prev[dateKey].filter((event) => event.id !== item.id),
+      }));
     }
-  
-    setDeleteConfirm({ show: false, item: null, isTodo: false });
-  };
+  } catch (error) {
+    console.error("삭제 오류:", error);
+  }
+
+  setDeleteConfirm({ show: false, item: null, isTodo: false });
+};
+
   
 
 
