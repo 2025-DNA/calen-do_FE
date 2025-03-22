@@ -35,6 +35,8 @@ const Login = () => {
     fetchUserData(token);
   }, [navigate]);
 
+  
+
   const fetchUserData = async (token) => {
     try {
       console.log("🔹 사용자 정보 요청 시작");
