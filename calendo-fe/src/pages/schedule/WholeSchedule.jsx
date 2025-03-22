@@ -633,6 +633,7 @@ useEffect(() => {
 const handleDayClick = (date) => {
   setSelectedDate(date);
   fetchEventsForDate(date);
+  fetchTodosForDate(date); 
 };
 
 
@@ -739,90 +740,98 @@ const handleDeleteEvent = async () => {
 };
 
 // 📌 투두리스트 조회 (선택한 투두 정보 가져오기)
-const fetchTodo = async (todoId) => {
+// const fetchTodo = async (todoId) => {
+//   try {
+//     const response = await fetch(`/api/todo/${todoId}`);
+
+//     if (!response.ok) throw new Error("투두 조회 실패");
+
+//     const data = await response.json();
+//     return data; // 서버에서 받은 투두 데이터 반환
+//   } catch (error) {
+//     console.error("투두 조회 오류:", error);
+//     return null;
+//   }
+// };
+const fetchTodosForDate = async (date) => {
+  const formattedDate = formatDateToYYYYMMDD(date); // "2025-02-08" 형태로 변환
+  const token = localStorage.getItem("access-token") ||
+                localStorage.getItem("accessToken") ||
+                localStorage.getItem("jwt_token");
+
+  if (!token) {
+    console.error("❌ Access Token이 없습니다!");
+    return;
+  }
+
   try {
-    const response = await fetch(`/api/todo/${todoId}`);
+    const response = await fetch(`https://calendo.site/api/todos?date=${formattedDate}`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json"
+      }
+    });
 
     if (!response.ok) throw new Error("투두 조회 실패");
 
     const data = await response.json();
-    return data; // 서버에서 받은 투두 데이터 반환
+
+    console.log("✅ 투두 조회 성공:", data);
+
+    // 상태에 저장
+    setTodoLists((prev) => ({
+      ...prev,
+      [date.toDateString()]: data
+    }));
   } catch (error) {
-    console.error("투두 조회 오류:", error);
-    return null;
+    console.error("❌ 투두 조회 오류:", error);
   }
 };
-// 📌 To-do 추가 (POST 요청)
-// const addTodo = async () => {
-//   const dateKey = selectedDate.toDateString();
-//   const newTodo = {
-//     title: newTitle,
-//     date: dateKey,
-//     completed: false,
-//   };
 
-//   try {
-//     const response = await fetch("/api/users/todo", {
-//       method: "POST",
-//       headers: { "Content-Type": "application/json" },
-//       body: JSON.stringify(newTodo),
-//     });
 
-//     if (!response.ok) throw new Error("투두 추가 실패");
 
-//     const savedTodo = await response.json(); // 서버에서 저장된 투두 반환
+//투두 수정
+// const updateTodo = async (todoId, newTitle) => {
+//   const token = localStorage.getItem("access-token") ||
+//                 localStorage.getItem("accessToken") ||
+//                 localStorage.getItem("jwt_token");
 
-//     // ✅ 현재 프로젝트 데이터 업데이트
-//     setProjectData((prev) => ({
-//       ...prev,
-//       [selectedProject]: {
-//         ...prev[selectedProject],
-//         todoLists: {
-//           ...prev[selectedProject]?.todoLists,
-//           [dateKey]: [...(prev[selectedProject]?.todoLists[dateKey] || []), savedTodo],
-//         },
-//       },
-//     }));
-
-//     setTodoLists((prev) => ({
-//       ...prev,
-//       [dateKey]: [...(prev[dateKey] || []), savedTodo],
-//     }));
-
-//     closeModal();
-//   } catch (error) {
-//     console.error("투두 추가 오류:", error);
+//   if (!token) {
+//     console.error("❌ Access Token이 없습니다!");
+//     return;
 //   }
-// };
-// 📌 To-do 수정 (PUT 요청)
-// const updateTodo = async (todoId, updatedTodo) => {
+
 //   try {
-//     const response = await fetch(`/api/todo/${todoId}`, {
+//     const response = await fetch(`https://calendo.site/api/todos/update/${todoId}`, {
 //       method: "PUT",
-//       headers: { "Content-Type": "application/json" },
-//       body: JSON.stringify(updatedTodo),
+//       headers: {
+//         "Content-Type": "application/json",
+//         "Authorization": `Bearer ${token}`
+//       },
+//       body: JSON.stringify({ title: newTitle }),
 //     });
 
 //     if (!response.ok) throw new Error("투두 수정 실패");
 
-//     setTodoLists((prev) => {
-//       const dateKey = selectedDate.toDateString();
-//       return {
-//         ...prev,
-//         [dateKey]: prev[dateKey].map((todo) =>
-//           todo.id === todoId ? { ...todo, ...updatedTodo } : todo
-//         ),
-//       };
-//     });
+//     const result = await response.json();
+//     console.log("✅ 투두 수정 성공:", result);
+
+//     // 프론트 상태 업데이트
+//     const dateKey = selectedDate.toDateString();
+//     setTodoLists((prev) => ({
+//       ...prev,
+//       [dateKey]: prev[dateKey].map((todo) =>
+//         todo.id === todoId ? { ...todo, title: newTitle } : todo
+//       ),
+//     }));
 
 //     closeModal();
 //   } catch (error) {
-//     console.error("투두 수정 오류:", error);
+//     console.error("❌ 투두 수정 오류:", error);
 //   }
 // };
-
-//투두 수정
-const updateTodo = async (todoId, newTitle) => {
+const updateTodo = async (todoId, updatedTitle) => {
   const token = localStorage.getItem("access-token") ||
                 localStorage.getItem("accessToken") ||
                 localStorage.getItem("jwt_token");
@@ -837,26 +846,26 @@ const updateTodo = async (todoId, newTitle) => {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`
+        "Authorization": `Bearer ${token}`,
       },
-      body: JSON.stringify({ title: newTitle }),
+      body: JSON.stringify({ title: updatedTitle }),
     });
 
-    if (!response.ok) throw new Error("투두 수정 실패");
+    const contentType = response.headers.get("content-type");
 
-    const result = await response.json();
-    console.log("✅ 투두 수정 성공:", result);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("❌ 투두 수정 실패:", errorText);
+      return;
+    }
 
-    // 프론트 상태 업데이트
-    const dateKey = selectedDate.toDateString();
-    setTodoLists((prev) => ({
-      ...prev,
-      [dateKey]: prev[dateKey].map((todo) =>
-        todo.id === todoId ? { ...todo, title: newTitle } : todo
-      ),
-    }));
-
-    closeModal();
+    if (contentType && contentType.includes("application/json")) {
+      const result = await response.json();
+      console.log("✅ 투두 수정 성공 (JSON):", result);
+    } else {
+      const text = await response.text();
+      console.log("✅ 투두 수정 성공 (문자열):", text);
+    }
   } catch (error) {
     console.error("❌ 투두 수정 오류:", error);
   }
@@ -1074,28 +1083,32 @@ const handleSave = async () => {
       if (!updatedTodos[dateKey]) updatedTodos[dateKey] = [];
 
       if (editingIndex !== null) {
-        const editingTodo = updatedTodos[dateKey][editingIndex];
-        if (editingTodo?.id) {
-          await updateTodo(editingTodo.id, newTitle);
-        } else {
-          console.error("❌ 수정할 투두에 ID가 없습니다:", editingTodo);
+        const todoToUpdate = updatedTodos[dateKey][editingIndex];
+        if (!todoToUpdate.id) {
+          console.error("❌ 수정할 투두에 ID가 없습니다:", todoToUpdate);
+          return;
         }
+        await updateTodo(todoToUpdate.id, newTitle);
+
+        updatedTodos[dateKey] = updatedTodos[dateKey].map((todo, idx) =>
+          idx === editingIndex ? { ...todo, title: newTitle } : todo
+        );
         setEditingIndex(null);
       
-        updatedTodos[dateKey][editingIndex] = newItem;
-       
+
+
         // updatedTodos[dateKey] = updatedTodos[dateKey].map((todo, idx) =>
-        //   idx === editingIndex ? newItem : todo
+        //   idx === editingIndex
+        //     ? { ...todo, title: newTitle }
+        //     : todo
         // );
         // setEditingIndex(null);
-      } else {
-        // 서버에 투두 추가 요청
-        const addedTodo = await addTodo(currentDate, newTitle);
 
-        //updatedTodos[dateKey].push(newItem);
-      
+         } else {
+        // 🔥 서버에 실제 추가 요청
+        const addedTodo = await addTodo(newTitle, selectedDate);
 
-        if (addedTodo) {
+        if (addedTodo && addedTodo.id) {
           const newTodoItem = {
             id: addedTodo.id,
             title: addedTodo.title,
@@ -1109,6 +1122,8 @@ const handleSave = async () => {
             completed: addedTodo.checked || false
           };
           updatedTodos[dateKey].push(newTodoItem);
+        } else {
+          console.error("❌ 추가된 투두에 ID가 없습니다:", addedTodo);
         }
       }
 
