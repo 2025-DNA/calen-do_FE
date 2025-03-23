@@ -876,49 +876,6 @@ const updateTodo = async (todoId, updatedTitle) => {
 
 
 
-// 📌 To-do 삭제 (PUT 요청)
-// const deleteTodo = async (todoId) => {
-//   const dateKey = selectedDate.toDateString();
-//   try {
-//     const response = await fetch(`/api/users/todo/${todoId}`, {
-//       method: "PUT",
-//       headers: { "Content-Type": "application/json" },
-//       body: JSON.stringify({ deleted: true }),
-//     });
-
-//     if (!response.ok) throw new Error("투두 삭제 실패");
-
-//     setProjectData((prev) => {
-//       const updatedProjectData = { ...prev };
-//       if (updatedProjectData[selectedProject]?.todoLists) {
-//         updatedProjectData[selectedProject].todoLists[dateKey] =
-//           updatedProjectData[selectedProject].todoLists[dateKey].filter((todo) => todo.id !== todoId);
-
-//         // ✅ 삭제 후 데이터가 비어 있으면 해당 날짜 키 삭제
-//         if (updatedProjectData[selectedProject].todoLists[dateKey].length === 0) {
-//           delete updatedProjectData[selectedProject].todoLists[dateKey];
-//         }
-//       }
-//       return updatedProjectData;
-//     });
-
-//     setTodoLists((prev) => {
-//       const updatedTodos = { ...prev };
-//       if (updatedTodos[dateKey]) {
-//         updatedTodos[dateKey] = updatedTodos[dateKey].filter((todo) => todo.id !== todoId);
-//       }
-//       // ✅ 삭제 후 해당 날짜의 할 일이 없다면 날짜 키 삭제
-//       if (updatedTodos[dateKey].length === 0) {
-//         delete updatedTodos[dateKey];
-//       }
-//       return updatedTodos;
-//     });
-
-//     setDeleteConfirm({ show: false, item: null, isTodo: false });
-//   } catch (error) {
-//     console.error("투두 삭제 오류:", error);
-//   }
-// };
 
 
 
@@ -1250,7 +1207,7 @@ const handleDelete = async (item, isTodo) => {
 
   // 🔁 To-do 삭제 경로는 그대로 두고 일정 삭제 경로만 수정
   const url = isTodo
-    ? `https://calendo.site/api/todo/${item.id}`
+    ? `https://calendo.site/api/todos/toggle/${item.id}`
     : `https://calendo.site/delete-schedule/${item.id}`;
 
   console.log("🚀 삭제 요청 URL:", url);
@@ -1290,17 +1247,38 @@ const handleDelete = async (item, isTodo) => {
   setDeleteConfirm({ show: false, item: null, isTodo: false });
 };
 
-  
+const toggleTodo = async (todo) => {
+  const dateKey = selectedDate.toDateString();
+  const token = localStorage.getItem("access-token") ||
+                localStorage.getItem("accessToken") ||
+                localStorage.getItem("jwt_token");
 
+  if (!token) {
+    console.error("❌ Access Token이 없습니다!");
+    return;
+  }
 
-  const toggleTodo = (todo) => {
-    const dateKey = selectedDate.toDateString();
-  
+  try {
+    const response = await fetch(`https://calendo.site/api/todos/toggle/${todo.id}`, {
+      method: "PUT",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || "토글 실패");
+    }
+
+    console.log("✅ 투두 삭제 성공:", todo.id);
+
+    // 클라이언트 상태 반영
     setProjectData((prev) => {
       const updatedTodos = (prev[selectedProject]?.todoLists[dateKey] || []).map((t) =>
-        t === todo ? { ...t, completed: !t.completed } : t
+        t.id === todo.id ? { ...t, checked: !t.checked, completed: !t.checked } : t
       );
-  
+
       return {
         ...prev,
         [selectedProject]: {
@@ -1312,7 +1290,41 @@ const handleDelete = async (item, isTodo) => {
         },
       };
     });
-  };
+
+    // 전역 투두 상태도 갱신
+    setTodoLists((prev) => ({
+      ...prev,
+      [dateKey]: prev[dateKey].map((t) =>
+        t.id === todo.id ? { ...t, checked: !t.checked, completed: !t.checked } : t
+      ),
+    }));
+  } catch (error) {
+    console.error("❌ 투두 토글 오류:", error);
+  }
+};
+
+
+
+  // const toggleTodo = (todo) => {
+  //   const dateKey = selectedDate.toDateString();
+  
+  //   setProjectData((prev) => {
+  //     const updatedTodos = (prev[selectedProject]?.todoLists[dateKey] || []).map((t) =>
+  //       t === todo ? { ...t, completed: !t.completed } : t
+  //     );
+  
+  //     return {
+  //       ...prev,
+  //       [selectedProject]: {
+  //         ...prev[selectedProject],
+  //         todoLists: {
+  //           ...prev[selectedProject]?.todoLists,
+  //           [dateKey]: updatedTodos,
+  //         },
+  //       },
+  //     };
+  //   });
+  // };
 
   return (
     <div className="schedule-container">
