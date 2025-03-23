@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom"; 
 import api from "../../services/api";
 import styled from "styled-components";
@@ -49,19 +49,40 @@ function InvitePage() {
     const [searchResults, setSearchResults] = useState([]); 
     const [invitedUsers, setInvitedUsers] = useState([]); 
     const [projectName, setProjectName] = useState(""); 
-    const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
+    const [currentUser, setCurrentUser] = useState(null);
+    const [accessToken, setAccessToken] = useState(null);
+
+    useEffect(() => {
+        const storedUser = JSON.parse(localStorage.getItem("user"));
+        const token = localStorage.getItem("accessToken");
+        if (storedUser) {
+            setCurrentUser(storedUser);
+        }
+        if (token) {
+            setAccessToken(token);
+        }
+    }, []);
+
+    useEffect(() => {
+        console.log("Updated token:", accessToken);
+    }, [accessToken]);
 
     /*유저 검색*/
     const onSearch = async (input) => {
         setUserInput(input);
-
+    
         if (input.trim() === "") {
             setSearchResults([]);
             return;
         }
-
+    
+        const token = localStorage.getItem("accessToken"); 
+    
         try {
-            const response = await api.get(`/users/search?nickName=${encodeURIComponent(input)}`, {
+            const response = await api.get(`/api/users/search?nickName=${encodeURIComponent(input)}`, {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                },
                 withCredentials: true
             });
             setSearchResults(response.data);
@@ -70,18 +91,20 @@ function InvitePage() {
             setSearchResults([]);
         }
     };
+    
 
     /** 🔹 친구 추가 */
     const handleAddFriend = (user) => {
         if (!invitedUsers.find(invited => invited.id === user.id)) {
-            setInvitedUsers([...invitedUsers, user]);
+            setInvitedUsers(prev => {
+                const updatedList = [...prev, user];
+                console.log("추가된 친구:", updatedList); // ✅ 이렇게 하면 바로 확인 가능
+                return updatedList;
+            });
         }
     };
-
-    /** 🔹 초대한 유저 서버에 전송 */
-    const handleInvite = async () => {
-        console.log("🔍 저장된 accessToken:", localStorage.getItem("accessToken"));
     
+    const handleInvite = async () => {
         if (!projectName.trim()) {
             alert("프로젝트명을 입력해주세요.");
             return;
@@ -92,35 +115,29 @@ function InvitePage() {
             return;
         }
     
-        // 현재 로그인한 유저 정보 (localStorage에서 가져오기)
-        const currentUser = {
-            email: localStorage.getItem("userEmail"),  
-            nickname: localStorage.getItem("userNickname"),  
-            id: parseInt(localStorage.getItem("userId"), 10) 
-        };
-
-        console.log("로그인 유저정보 : ", currentUser);
+        if (!currentUser || !accessToken) {
+            alert("로그인이 필요합니다.");
+            navigate("/login");
+            return;
+        }
     
-        // API가 기대하는 invitations 데이터 변환 (email 포함)
-        const invitations = invitedUsers.map(user => ({
-            email: user.email, // ✅ 이메일 포함
-            nickname: user.nickName,
-            message: `${currentUser.email}님이 '${projectName}' 프로젝트에 ${user.nickName}님을 초대하셨습니다.`
-        }));
+        console.log("🧑‍💻 로그인 유저 정보:", currentUser);
     
-        // 요청 바디 구성
         const requestBody = {
-            projectName,
-            invitations, // ✅ 초대한 친구 리스트
-            createdBy: currentUser
+            projectName: projectName,
+            members: invitedUsers.map(user => user.nickName)
         };
+    
+        // ✅ 서버 전송 전 로그 출력
+        console.log("📦 서버로 전송할 데이터:");
+        console.log(JSON.stringify(requestBody, null, 2));
     
         try {
-            const response = await api.post("/api/projects/create", requestBody, {
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem("accessToken")}` 
-                }
-            });
+            console.log("📤 POST 요청 시작: /api/projects/create");
+    
+            const response = await api.post(`/api/projects/create`, requestBody);
+    
+            console.log("✅ 서버 응답:", response.data);
     
             if (response.status === 200) {
                 alert("✅ 프로젝트가 성공적으로 생성되고 초대가 전송되었습니다!");
@@ -132,17 +149,14 @@ function InvitePage() {
                 console.error("응답 상태 코드:", error.response.status);
                 console.error("응답 데이터:", error.response.data);
             }
-            alert("초대에 실패했습니다.");
+            alert("초대에 실패했습니다. 다시 로그인 후 시도해주세요.");
         }
     };
     
-    
-    
-
     return (
         <S.Container>
             <S.Header>
-                <S.BackButton onClick={() => navigate("/")}>
+                <S.BackButton onClick={() => navigate("/")}> 
                     <img src={backIcon} alt="Back" width="32" height="32" />
                 </S.BackButton>
             </S.Header>
