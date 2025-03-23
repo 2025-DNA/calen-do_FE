@@ -51,53 +51,11 @@ const WholeSchedule = () => {
   const [projects, setProjects] = useState([defaultProject]);
   const [selectedProject, setSelectedProject] = useState(defaultProject);
   const [projectData, setProjectData] = useState({
-    [defaultProject]: { events: {}, todoLists: {} },
+    [defaultProject]: { events: {}, todoLists: {}, color: "#FFCDD2", // ✅ 기본 색상 추가
+  },
   });
 
-  // const fetchSchedules = async () => {
-  //   try {
-  //     let token = localStorage.getItem("access-token");
-  
-  //     // 🔥 `access_token`이 null이면 `accessToken` 또는 `jwt_token`을 사용
-  //     if (!token) {
-  //       token = localStorage.getItem("accessToken") || localStorage.getItem("jwt_token");
-  //     }
-  
-  //     if (!token) {
-  //       console.error("❌ Access Token이 없습니다!");
-  //       return;
-  //     }
-  
-  //     console.log(`📌 보낼 토큰: Bearer ${token}`); // ✅ 실제 토큰 값 확인
-  
-  //     const response = await fetch("https://calendo.site/api/schedules", {
-  //       method: "GET",
-  //       headers: {
-  //         "Content-Type": "application/json",
-  //         "Authorization": `Bearer ${token}`, // ✅ Bearer Token 추가
-  //       },
-  //       credentials: "include", // ✅ CORS 문제 해결 (쿠키 포함)
-  //     });
 
-  //     if (response.status === 401 || response.redirected) {
-  //       // 인증이 안 되어있거나 로그인 필요하면 OAuth로 이동
-  //       window.location.href = "https://calendo.site/oauth2/authorization/google";
-  //       return;
-  //     }
-  //     if (!response.ok) throw new Error("일정 불러오기 실패");
-  
-  //     const data = await response.json();
-  //     console.log("✅ 일정 데이터:", data);
-  //     return data;
-
-  //   } catch (error) {
-  //     console.error("🚨 API 호출 실패:", error);
-  //   }
-  // };
-  
-  // fetchSchedules();
-  
-  
 
   
   useEffect(() => {
@@ -120,6 +78,8 @@ const WholeSchedule = () => {
 
     setSelectedProject(defaultProject);
   }, [defaultProject]);
+
+  
 
 // ✅ 프로젝트 추가 기능
 const handleCreateProject = () => {
@@ -326,111 +286,171 @@ const handleEditTodo = (todo, index) => {
 };
 
   const userId = localStorage.getItem("userId"); // ✅ 사용자 ID 가져오기
-  // ✅ 초기 색상 불러오기 (GET 요청)
-  useEffect(() => {
-    if (!userId) return;
 
-    fetch(`/api/users/${userId}/color`)
-      .then(response => response.json())
-      .then(data => {
-        if (data.color) {
-          setSelectedColor(data.color); // 서버에서 저장된 색상 적용
-        }
-      })
-      .catch(error => console.error("메인 테마 색상 불러오기 실패:", error));
-  }, [userId]);
+  // ✅ 색상 변경 관련 통합 정리
 
-  // ✅ 색상 선택 이벤트
-  const handleColorChange = async (e) => {
-    const newColor = e.target.value;
-    setSelectedColor(newColor);
-  
-    // 🔥 현재 선택된 프로젝트 색상 변경
+const [isSavingColor, setIsSavingColor] = useState(false);
+// ✅ 메인 테마 색상 변경 (POST /change-theme)
+const updateMainThemeColor = async (newColor) => {
+  console.log("🎯 updateMainThemeColor 호출됨:", newColor);
+  if (isSavingColor) return;
+
+  const token = localStorage.getItem("access-token") ||
+                localStorage.getItem("accessToken") ||
+                localStorage.getItem("jwt_token");
+
+  if (!token) {
+    console.error("❌ Access Token이 없습니다!");
+    return;
+  }
+
+  setIsSavingColor(true);
+  try {
+    const response = await fetch(`https://calendo.site/change-theme`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+      body: JSON.stringify({ color: newColor }),
+    });
+
+    if (response.redirected) {
+      window.location.href = response.url;
+      return;
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`색상 변경 실패: ${errorText}`);
+    }
+
+    console.log("✅ 메인 테마 색상 변경 성공");
+
+    // ✅ 상태 반영 (projectData에 저장)
+    setProjectData((prev) => ({
+      ...prev,
+      [defaultProject]: {
+        ...prev[defaultProject],
+        color: newColor,
+        events: Object.fromEntries(
+          Object.entries(prev[defaultProject]?.events || {}).map(([date, eventList]) => [
+            date,
+            eventList.map(event => ({ ...event, color: newColor })),
+          ])
+        )
+      }
+    }));
+
+    // ✅ events도 갱신
+    setEvents((prev) =>
+      Object.fromEntries(
+        Object.entries(prev).map(([date, eventList]) => [
+          date,
+          eventList.map(event => ({ ...event, color: newColor })),
+        ])
+      )
+    );
+  } catch (error) {
+    console.error("메인 테마 색상 변경 오류:", error);
+  } finally {
+    setIsSavingColor(false);
+  }
+};
+
+
+
+// ✅ 프로젝트 테마 색상 변경 (PUT /api/projects/{projectId}/mainTheme)
+const updateProjectThemeColor = async (projectId, newColor) => {
+  const token = localStorage.getItem("access-token") ||
+                localStorage.getItem("accessToken") ||
+                localStorage.getItem("jwt_token");
+
+  if (!token) {
+    console.error("❌ Access Token이 없습니다!");
+    return;
+  }
+
+  try {
+    const response = await fetch(`https://calendo.site/api/projects/${projectId}/mainTheme`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+      body: JSON.stringify({ color: newColor }),
+    });
+
+    if (response.redirected) {
+      window.location.href = response.url;
+      return;
+    }
+
+    if (!response.ok) throw new Error("프로젝트 테마 색상 변경 실패");
+
+    const result = await response.json();
+    console.log("✅ 프로젝트 테마 색상 변경 성공:", result);
+
     setProjectData((prev) => ({
       ...prev,
       [selectedProject]: {
         ...prev[selectedProject],
-        color: newColor,
-        events: Object.fromEntries(
-          Object.entries(prev[selectedProject]?.events || {}).map(([date, eventList]) => [
-            date,
-            eventList.map(event => ({ ...event, color: newColor })), // 🔥 일정 색상 변경
-          ])
-        ),
+        color: result.newColor,
       },
     }));
 
-    if (selectedProject !== defaultProject) {
-      setEvents((prev) => ({
-        ...prev,
-        ...Object.fromEntries(
-          Object.entries(prev).map(([date, eventList]) => [
-            date,
-            eventList.map(event =>
-              event.color === projectData[selectedProject]?.color ? { ...event, color: newColor } : event
-            ),
-          ])
-        ),
-      }));
-    };
-    
-
-  if (!userId) return;
-
-  try {
-    // 색상이 처음 선택된 경우 (POST 요청)
-    const response = await fetch(`api/projects/{projectId}/theme`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ color: newColor }),
+    setEvents((prev) => {
+      return Object.fromEntries(
+        Object.entries(prev).map(([date, eventList]) => [
+          date,
+          eventList.map(event =>
+            event.color === result.oldColor ? { ...event, color: result.newColor } : event
+          ),
+        ])
+      );
     });
-
-    if (!response.ok) {
-      throw new Error("색상 저장 실패");
-    }
   } catch (error) {
-    console.error("메인 테마 색상 저장 오류:", error);
+    console.error("프로젝트 테마 색상 변경 오류:", error);
   }
 };
 
-// ✅ 색상 변경 이벤트 (POST 요청)
-const updateColor = async (newColor) => {
-  setSelectedColor(newColor);
+// ✅ 프로젝트 테마 색상 조회 (GET /api/projects/{projectId}/mainTheme)
+const fetchProjectThemeColor = async (projectId) => {
+  const token = localStorage.getItem("access-token") ||
+                localStorage.getItem("accessToken") ||
+                localStorage.getItem("jwt_token");
 
-  if (!userId) return;
+  if (!token) {
+    console.error("❌ Access Token이 없습니다!");
+    return;
+  }
 
   try {
-    const response = await fetch(`change-theme`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ color: newColor }),
+    const response = await fetch(`https://calendo.site/api/projects/${projectId}/mainTheme`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
     });
 
-    if (!response.ok) {
-      throw new Error("색상 변경 실패");
+    if (response.redirected) {
+      window.location.href = response.url;
+      return;
     }
-  } catch (error) {
-    console.error("메인 테마 색상 변경 오류:", error);
-  }
-};
 
-// 프로젝트 테마 색상 조회 (GET 요청)
-const fetchProjectTheme = async (projectId) => {
-  try {
-    const response = await fetch(`/api/projects/${projectId}/mainTheme`);
     if (!response.ok) throw new Error("프로젝트 테마 색상 조회 실패");
 
     const data = await response.json();
+
     if (data.color) {
-      setSelectedColor(data.color); // 🔥 프로젝트 색상 반영
-
-
+      setSelectedColor(data.color);
 
       setEvents((prev) => {
         return Object.fromEntries(
           Object.entries(prev).map(([date, eventList]) => [
             date,
-            eventList.map(event => ({ ...event, color: data.color })), // ✅ 색상 업데이트
+            eventList.map(event => ({ ...event, color: data.color })),
           ])
         );
       });
@@ -448,37 +468,30 @@ const fetchProjectTheme = async (projectId) => {
   }
 };
 
-// 프로젝트 테마 색상 변경 (PUT 요청)
-const updateProjectTheme = async (projectId, newColor) => {
-  try {
-    const response = await fetch(`/api/projects/${projectId}/mainTheme`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ color: newColor }),
-    });
+// ✅ 색상 변경 핸들러 (메인 or 프로젝트 판단)
+const handleColorChange = async (e) => {
+  const newColor = e.target.value;
+  setSelectedColor(newColor);
 
-    if (!response.ok) throw new Error("프로젝트 테마 색상 변경 실패");
-
-    // ✅ 변경된 색상을 상태에 반영
-    setProjectData((prev) => ({
-      ...prev,
-      [projectId]: {
-        ...prev[projectId],
-        color: newColor,
-      },
-    }));
-  } catch (error) {
-    console.error("프로젝트 테마 색상 변경 오류:", error);
+  if (selectedProject === defaultProject) {
+    await updateMainThemeColor(newColor);
+  } else {
+    const projectId = projectData[selectedProject]?.id;
+    if (!projectId) {
+      console.error("❌ 유효한 프로젝트 ID가 없습니다:", selectedProject);
+      return;
+    }
+    await updateProjectThemeColor(projectId, newColor);
   }
 };
 
-// ✅ 프로젝트 변경 시 테마 색상 조회
+// ✅ 프로젝트 변경 시 색상 조회
 useEffect(() => {
-  if (selectedProject) {
-    fetchProjectTheme(selectedProject);
+  if (selectedProject && selectedProject !== defaultProject) {
+    const projectId = projectData[selectedProject]?.id;
+    if (projectId) fetchProjectThemeColor(projectId);
   }
 }, [selectedProject]);
-
 
 
   useEffect(() => {
@@ -1305,27 +1318,6 @@ const toggleTodo = async (todo) => {
 
 
 
-  // const toggleTodo = (todo) => {
-  //   const dateKey = selectedDate.toDateString();
-  
-  //   setProjectData((prev) => {
-  //     const updatedTodos = (prev[selectedProject]?.todoLists[dateKey] || []).map((t) =>
-  //       t === todo ? { ...t, completed: !t.completed } : t
-  //     );
-  
-  //     return {
-  //       ...prev,
-  //       [selectedProject]: {
-  //         ...prev[selectedProject],
-  //         todoLists: {
-  //           ...prev[selectedProject]?.todoLists,
-  //           [dateKey]: updatedTodos,
-  //         },
-  //       },
-  //     };
-  //   });
-  // };
-
   return (
     <div className="schedule-container">
       {/* App Bar */}
@@ -1366,15 +1358,20 @@ const toggleTodo = async (todo) => {
         <input
             type="color"
             value={selectedColor}
-            onChange={handleColorChange}
-            onBlur={(e) => updateColor(e.target.value)}
+            onChange={(e) => {
+              const newColor = e.target.value;
+              setSelectedColor(newColor);  // 조건 없이 무조건 바꿔줌
+            }}
+            onBlur={(e) => {
+              updateMainThemeColor(e.target.value); // 조건 없이 무조건 호출
+            }}
             className="color-picker"
           />
         </div>
         
         <div className="app-bar-right">
           <img src={alertIcon} className="icon" onClick={() => navigate("/alert")}/>
-          <img src={addProjectIcon} className="icon" onClick={() => setIsProjectModalOpen(true)} />
+          <img src={addProjectIcon} className="icon" onClick={() => navigate("/invite")} />
           <img src={timeIcon} className="icon" onClick={() => navigate("/plan")}/>
           <img src={profileIcon} className="icon" onClick={() => navigate("/mypage")} />
         
