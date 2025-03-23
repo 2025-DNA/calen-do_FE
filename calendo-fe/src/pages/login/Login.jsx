@@ -35,6 +35,8 @@ const Login = () => {
     fetchUserData(token);
   }, [navigate]);
 
+  
+
   const fetchUserData = async (token) => {
     try {
       console.log("🔹 사용자 정보 요청 시작");
@@ -81,13 +83,6 @@ const Login = () => {
         <img src={googleIcon} alt="Google 로그인" className="google-login-button" />
       </div>
 
-      {/* 사용자 정보 표시 */}
-      {userData && (
-        <div>
-          <h3>환영합니다, {userData.name}님!</h3>
-          <p>Email: {userData.email}</p>
-        </div>
-      )}
     </div>
   );
 };
