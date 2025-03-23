@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import api from "../../services/api";
 import "react-calendar/dist/Calendar.css";
 import * as S from "./styled";
 import dayjs from "dayjs";
@@ -16,7 +17,6 @@ function CreatePlan() {
     const [meetingName, setMeetingName] = useState(""); // 회의명 입력
     const [deadline, setDeadline] = useState(""); // 마감 날짜 입력
     const today = new Date();
-    const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
     const handleCreate = async () => {
         if (!date || date.length !== 2 || !meetingName || !deadline) {
@@ -47,12 +47,9 @@ function CreatePlan() {
             deadline: formattedDeadline,
         };
 
-        console.log("📢 API BASE URL:", API_BASE_URL);
-        console.log("📢 최종 API 요청 URL:", `${API_BASE_URL}/api/timetables/${requestData.projectId}/create`);
-
         try {
-            const response = await fetch(
-                `${API_BASE_URL}/api/timetables/${requestData.projectId}/create`,
+            const response = await api.post(
+                `/api/timetables/${requestData.projectId}/create`,
                 {
                     method: "POST",
                     headers: {

@@ -7,6 +7,7 @@ const api = axios.create({
     headers: {
         "Content-Type": "application/json",
     },
+    withCredentials: true, 
 });
 
 // ✅ 요청마다 자동으로 Authorization 헤더 추가

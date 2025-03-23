@@ -23,7 +23,7 @@ const ContentWrapper = styled.div`
 `;
 
 const TitleText = styled.p`
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 600;
     color: #000000;
     margin-top: 5px;
@@ -41,7 +41,7 @@ function AlertItem({ post, onClick }) {
         <Wrapper onClick={onClick}>
             <img src={clock} alt="Back" width="24" height="24" />
             <ContentWrapper>
-                <TitleText>{post?.content || "알림 내용이 없습니다."}</TitleText>
+                <TitleText>{post?.message}</TitleText>
                 <ContentText>수락을 원하신다면 해당 알림을 확인해주세요</ContentText>
             </ContentWrapper>
         </Wrapper>
