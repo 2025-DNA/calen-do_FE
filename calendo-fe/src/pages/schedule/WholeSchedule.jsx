@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import Modal from "react-modal";
 import { FaUser, FaBell, FaCog, FaPlus, FaTrash, FaCheckCircle, FaTimes, FaClock, FaFileAlt } from "react-icons/fa"; 
 import "./WholeSchedule.css";
@@ -54,7 +54,40 @@ const WholeSchedule = () => {
     [defaultProject]: { events: {}, todoLists: {}, color: "#FFCDD2", // ✅ 기본 색상 추가
   },
   });
+  const location = useLocation();
 
+  // 🔹 Invite에서 넘어온 프로젝트 정보 처리
+  useEffect(() => {
+    const state = location.state;
+    if (state?.projectId && state?.projectName) {
+      const newProjectName = state.projectName;
+      const newProjectId = state.projectId;
+      const members = state.invitedUsers || [];
+
+      // 이미 존재하지 않는 프로젝트라면 추가
+      if (!projects.includes(newProjectName)) {
+        setProjects((prev) => [...prev, newProjectName]);
+
+        setProjectData((prev) => ({
+          ...prev,
+          [newProjectName]: {
+            id: newProjectId,
+            events: {},
+            todoLists: {},
+            color: "#FFCDD2",
+          },
+        }));
+
+        setProjectMembers((prev) => ({
+          ...prev,
+          [newProjectName]: members.map((m) => m.nickName || m),
+        }));
+
+        setSelectedProject(newProjectName);
+        setSelectedColor("#FFCDD2");
+      }
+    }
+  }, [location.state]);
 
 
   
@@ -707,46 +740,6 @@ const fetchTodosForDate = async (date) => {
 
 
 
-//투두 수정
-// const updateTodo = async (todoId, newTitle) => {
-//   const token = localStorage.getItem("access-token") ||
-//                 localStorage.getItem("accessToken") ||
-//                 localStorage.getItem("jwt_token");
-
-//   if (!token) {
-//     console.error("❌ Access Token이 없습니다!");
-//     return;
-//   }
-
-//   try {
-//     const response = await fetch(`https://calendo.site/api/todos/update/${todoId}`, {
-//       method: "PUT",
-//       headers: {
-//         "Content-Type": "application/json",
-//         "Authorization": `Bearer ${token}`
-//       },
-//       body: JSON.stringify({ title: newTitle }),
-//     });
-
-//     if (!response.ok) throw new Error("투두 수정 실패");
-
-//     const result = await response.json();
-//     console.log("✅ 투두 수정 성공:", result);
-
-//     // 프론트 상태 업데이트
-//     const dateKey = selectedDate.toDateString();
-//     setTodoLists((prev) => ({
-//       ...prev,
-//       [dateKey]: prev[dateKey].map((todo) =>
-//         todo.id === todoId ? { ...todo, title: newTitle } : todo
-//       ),
-//     }));
-
-//     closeModal();
-//   } catch (error) {
-//     console.error("❌ 투두 수정 오류:", error);
-//   }
-// };
 const updateTodo = async (todoId, updatedTitle) => {
   const token = localStorage.getItem("access-token") ||
                 localStorage.getItem("accessToken") ||
@@ -787,6 +780,126 @@ const updateTodo = async (todoId, updatedTitle) => {
   }
 };
 
+//프로젝트 일정 추가
+const addProjectSchedule = async (projectId, scheduleData) => {
+  const token = localStorage.getItem("access-token") || localStorage.getItem("jwt_token");
+
+  try {
+    const response = await fetch(`https://calendo.site/api/projects/${projectId}/schedules`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+      body: JSON.stringify(scheduleData),
+    });
+
+    if (!response.ok) throw new Error("프로젝트 일정 추가 실패");
+
+    const result = await response.json();
+    console.log("✅ 프로젝트 일정 추가 성공:", result);
+    return result; // { message, schedule }
+  } catch (error) {
+    console.error("❌ 프로젝트 일정 추가 오류:", error);
+    return null;
+  }
+};
+
+//프로젝트 일정 수정
+const updateProjectSchedule = async (projectId, scheduleId, updatedData) => {
+  const token = localStorage.getItem("access-token") || localStorage.getItem("jwt_token");
+
+  try {
+    const response = await fetch(`https://calendo.site/api/projects/${projectId}/schedules/${scheduleId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+      body: JSON.stringify(updatedData),
+    });
+
+    if (!response.ok) throw new Error("프로젝트 일정 수정 실패");
+
+    const contentType = response.headers.get("content-type");
+    if (contentType.includes("application/json")) {
+      const result = await response.json();
+      console.log("✅ 프로젝트 일정 수정 성공:", result);
+    } else {
+      const text = await response.text();
+      console.log("✅ 프로젝트 일정 수정 성공:", text);
+    }
+
+  } catch (error) {
+    console.error("❌ 프로젝트 일정 수정 오류:", error);
+  }
+};
+
+//프로젝트 일정 삭제
+const deleteProjectSchedule = async (projectId, scheduleId) => {
+  const token = localStorage.getItem("access-token") || localStorage.getItem("jwt_token");
+
+  try {
+    const response = await fetch(`https://calendo.site/api/projects/${projectId}/schedules/${scheduleId}`, {
+      method: "DELETE",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) throw new Error("프로젝트 일정 삭제 실패");
+
+    console.log("✅ 프로젝트 일정 삭제 성공:", scheduleId);
+  } catch (error) {
+    console.error("❌ 프로젝트 일정 삭제 오류:", error);
+  }
+};
+
+//프로젝트 일정 조회(한개)
+const fetchSingleProjectSchedule = async (projectId, scheduleId) => {
+  const token = localStorage.getItem("access-token") || localStorage.getItem("jwt_token");
+
+  try {
+    const response = await fetch(`https://calendo.site/api/projects/${projectId}/schedules/${scheduleId}`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) throw new Error("프로젝트 일정 단일 조회 실패");
+
+    const data = await response.json();
+    console.log("✅ 단일 프로젝트 일정 조회 성공:", data);
+    return data;
+  } catch (error) {
+    console.error("❌ 단일 프로젝트 일정 조회 오류:", error);
+    return null;
+  }
+};
+
+//프로젝트 일정 목록 조회(여러개)
+const fetchProjectSchedules = async (projectId) => {
+  const token = localStorage.getItem("access-token") || localStorage.getItem("jwt_token");
+
+  try {
+    const response = await fetch(`https://calendo.site/api/projects/${projectId}/schedules`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) throw new Error("프로젝트 일정 목록 조회 실패");
+
+    const data = await response.json();
+    console.log("✅ 프로젝트 일정 목록 조회 성공:", data);
+    return data; // 배열 or 객체
+  } catch (error) {
+    console.error("❌ 프로젝트 일정 목록 조회 오류:", error);
+    return null;
+  }
+};
 
 
 
