@@ -313,6 +313,7 @@ const updateMainThemeColor = async (newColor) => {
         "Authorization": `Bearer ${token}`,
       },
       body: JSON.stringify({ color: newColor }),
+      withCredentials: true, 
     });
 
     if (response.redirected) {
@@ -970,6 +971,152 @@ const handleNextMonth = () => {
   });
 };
 
+// const handleSave = async () => {
+//   let currentDate = new Date(selectedStartDate);
+//   const endDate = new Date(selectedEndDate);
+//   let updatedEvents = { ...projectData[selectedProject]?.events };
+//   let updatedTodos = { ...todoLists };
+
+//   while (currentDate <= endDate) {
+//     const dateKey = currentDate.toDateString();
+//     const newItem = {
+//       title: newTitle,
+//       type: eventType,
+//       color: projectData[selectedProject]?.color || "#FFCDD2",
+//       time: selectedTime,
+//       repeat: repeatOption,
+//       alert: alertOption,
+//       completed: false,
+//     };
+
+//     if (eventType === "Schedule") {
+//       if (editingIndex !== null) {
+//         if (!updatedEvents[dateKey]) updatedEvents[dateKey] = [];
+//         updatedEvents[dateKey][editingIndex] = newItem;
+//         setEditingIndex(null);
+//       } else {
+//         const added = await addEvent(); // ✅ addEvent가 서버로부터 받은 일정 객체 반환
+
+//         if (added) {
+//           const updatedItem = {
+//             ...added,
+//             type: "Schedule",
+//             color: projectData[selectedProject]?.color || "#FFCDD2",
+//             time: selectedTime,
+//             repeat: repeatOption,
+//             alert: alertOption,
+//             completed: false
+//           };
+
+//           if (!updatedEvents[dateKey]) updatedEvents[dateKey] = [];
+//           updatedEvents[dateKey].push(updatedItem);
+//         }
+
+//         // 🔁 반복 처리 (화면용)
+//         const createRepeatItem = (dateObj) => ({
+//           ...newItem,
+//           color: projectData[selectedProject]?.color || "#FFCDD2",
+//         });
+
+//         if (repeatOption === "weekly") {
+//           for (let i = 1; i <= 10; i++) {
+//             let nextDate = new Date(currentDate);
+//             nextDate.setDate(nextDate.getDate() + i * 7);
+//             const nextDateKey = nextDate.toDateString();
+//             if (!updatedEvents[nextDateKey]) updatedEvents[nextDateKey] = [];
+//             updatedEvents[nextDateKey].push(createRepeatItem(nextDate));
+//           }
+//         }
+
+//         if (repeatOption === "monthly") {
+//           for (let i = 1; i <= 12; i++) {
+//             let nextDate = new Date(currentDate);
+//             nextDate.setMonth(nextDate.getMonth() + i);
+//             const nextDateKey = nextDate.toDateString();
+//             if (!updatedEvents[nextDateKey]) updatedEvents[nextDateKey] = [];
+//             updatedEvents[nextDateKey].push(createRepeatItem(nextDate));
+//           }
+//         }
+
+//         if (repeatOption === "yearly") {
+//           for (let i = 1; i <= 5; i++) {
+//             let nextDate = new Date(currentDate);
+//             nextDate.setFullYear(currentDate.getFullYear() + i);
+//             const nextDateKey = nextDate.toDateString();
+//             if (!updatedEvents[nextDateKey]) updatedEvents[nextDateKey] = [];
+//             updatedEvents[nextDateKey].push(createRepeatItem(nextDate));
+//           }
+//         }
+//       }
+
+//       setEvents(updatedEvents);
+//     } else if (eventType === "To-do") {
+//       if (!updatedTodos[dateKey]) updatedTodos[dateKey] = [];
+
+//       if (editingIndex !== null) {
+//         const todoToUpdate = updatedTodos[dateKey][editingIndex];
+//         if (!todoToUpdate.id) {
+//           console.error("❌ 수정할 투두에 ID가 없습니다:", todoToUpdate);
+//           return;
+//         }
+//         await updateTodo(todoToUpdate.id, newTitle);
+
+//         updatedTodos[dateKey] = updatedTodos[dateKey].map((todo, idx) =>
+//           idx === editingIndex ? { ...todo, title: newTitle } : todo
+//         );
+//         setEditingIndex(null);
+      
+
+//          } else {
+//         // 🔥 서버에 실제 추가 요청
+//         const addedTodo = await addTodo(newTitle, selectedDate);
+
+//         if (addedTodo && addedTodo.id) {
+//           const newTodoItem = {
+//             id: addedTodo.id,
+//             title: addedTodo.title,
+//             checked: addedTodo.checked,
+//             userId: addedTodo.userId,
+//             type: "To-do",
+//             color: projectData[selectedProject]?.color || "#FFCDD2",
+//             time: selectedTime,
+//             repeat: repeatOption,
+//             alert: alertOption,
+//             completed: addedTodo.checked || false
+//           };
+//           updatedTodos[dateKey].push(newTodoItem);
+//         } else {
+//           console.error("❌ 추가된 투두에 ID가 없습니다:", addedTodo);
+//         }
+//       }
+
+//       setTodoLists(updatedTodos);
+//       setProjectData((prev) => ({
+//         ...prev,
+//         [selectedProject]: {
+//           ...prev[selectedProject],
+//           todoLists: {
+//             ...prev[selectedProject]?.todoLists,
+//             [dateKey]: updatedTodos[dateKey],
+//           },
+//         },
+//       }));
+//     }
+
+//     currentDate.setDate(currentDate.getDate() + 1);
+//   }
+
+//   setProjectData((prev) => ({
+//     ...prev,
+//     [selectedProject]: {
+//       ...prev[selectedProject],
+//       events: updatedEvents,
+//     },
+//   }));
+
+//   closeModal();
+// };
+
 const handleSave = async () => {
   let currentDate = new Date(selectedStartDate);
   const endDate = new Date(selectedEndDate);
@@ -978,23 +1125,39 @@ const handleSave = async () => {
 
   while (currentDate <= endDate) {
     const dateKey = currentDate.toDateString();
-    const newItem = {
-      title: newTitle,
-      type: eventType,
-      color: projectData[selectedProject]?.color || "#FFCDD2",
-      time: selectedTime,
-      repeat: repeatOption,
-      alert: alertOption,
-      completed: false,
-    };
 
     if (eventType === "Schedule") {
       if (editingIndex !== null) {
         if (!updatedEvents[dateKey]) updatedEvents[dateKey] = [];
-        updatedEvents[dateKey][editingIndex] = newItem;
+
+        const original = updatedEvents[dateKey][editingIndex]; // 기존 일정 참조
+        const updatedItem = {
+          ...original, // 기존 id 유지
+          title: newTitle,
+          type: eventType,
+          time: selectedTime,
+          repeat: repeatOption,
+          alert: alertOption,
+          color: projectData[selectedProject]?.color || "#FFCDD2",
+          completed: false,
+        };
+
+        updatedEvents[dateKey][editingIndex] = updatedItem;
         setEditingIndex(null);
+
+        // 🔥 백엔드에 일정 수정 요청
+        if (original?.id) {
+          await updateEvent(original.id, {
+            ...updatedItem,
+            date: currentDate,
+            startTime: selectedStartTime,
+            endTime: selectedEndTime,
+            repeatType: repeatOption?.toUpperCase() || "NONE"
+          });
+        }
+
       } else {
-        const added = await addEvent(); // ✅ addEvent가 서버로부터 받은 일정 객체 반환
+        const added = await addEvent(); // ✅ 서버에 추가 요청
 
         if (added) {
           const updatedItem = {
@@ -1011,11 +1174,21 @@ const handleSave = async () => {
           updatedEvents[dateKey].push(updatedItem);
         }
 
-        // 🔁 반복 처리 (화면용)
+        // 🔁 반복 일정 추가 (프론트 상태만)
         const createRepeatItem = (dateObj) => ({
           ...newItem,
           color: projectData[selectedProject]?.color || "#FFCDD2",
         });
+
+        const newItem = {
+          title: newTitle,
+          type: eventType,
+          color: projectData[selectedProject]?.color || "#FFCDD2",
+          time: selectedTime,
+          repeat: repeatOption,
+          alert: alertOption,
+          completed: false,
+        };
 
         if (repeatOption === "weekly") {
           for (let i = 1; i <= 10; i++) {
@@ -1049,6 +1222,7 @@ const handleSave = async () => {
       }
 
       setEvents(updatedEvents);
+
     } else if (eventType === "To-do") {
       if (!updatedTodos[dateKey]) updatedTodos[dateKey] = [];
 
@@ -1058,24 +1232,16 @@ const handleSave = async () => {
           console.error("❌ 수정할 투두에 ID가 없습니다:", todoToUpdate);
           return;
         }
+
         await updateTodo(todoToUpdate.id, newTitle);
 
-        updatedTodos[dateKey] = updatedTodos[dateKey].map((todo, idx) =>
-          idx === editingIndex ? { ...todo, title: newTitle } : todo
-        );
+        updatedTodos[dateKey][editingIndex] = {
+          ...todoToUpdate,
+          title: newTitle,
+        };
         setEditingIndex(null);
-      
 
-
-        // updatedTodos[dateKey] = updatedTodos[dateKey].map((todo, idx) =>
-        //   idx === editingIndex
-        //     ? { ...todo, title: newTitle }
-        //     : todo
-        // );
-        // setEditingIndex(null);
-
-         } else {
-        // 🔥 서버에 실제 추가 요청
+      } else {
         const addedTodo = await addTodo(newTitle, selectedDate);
 
         if (addedTodo && addedTodo.id) {
