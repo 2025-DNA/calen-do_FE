@@ -1,5 +1,7 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import * as S from "./styled"
+import { useEffect, useState } from "react";
+import axios from "axios";
+import * as S from "./styled";
 import backIcon from "../../assets/icons/backbtn.svg";
 import ProgressBar from "../../components/current/progressBar";
 import ParticipantsBlock from "../../components/current/participantBlock";
@@ -7,14 +9,35 @@ import ParticipantsBlock from "../../components/current/participantBlock";
 function CheckTime() {
     const navigate = useNavigate();
     const location = useLocation();
-    const { date, startTime, endTime, selectedTimes } = location.state || {};
-    
-    // 목업 데이터: 총 인원 및 참가자 목록
-    const headCount = 5; // 총 5명
-    const participants = ["Alice", "Bob", "Charlie"]; // 현재 3명 참여
+    const { date, startTime, endTime, selectedTimes, projectId } = location.state || {};
 
-    console.log("date", date)
-    console.log("전달", selectedTimes)
+    const headCount = 5;
+    const participants = ["Alice", "Bob", "Charlie"];
+
+    const [availableTimes, setAvailableTimes] = useState([]);
+
+    useEffect(() => {
+        const fetchAvailableTimes = async () => {
+            if (!projectId) {
+                console.warn("projectId가 없습니다.");
+                return;
+            }
+            try {
+                const response = await axios.get(`https://calendo.site/api/projects/${projectId}/available_times`);
+                console.log("서버 응답 데이터:", response.data); // 이 부분 추가
+                setAvailableTimes(response.data);
+            } catch (error) {
+                console.error("Error fetching available times:", error);
+                if (error.response) {
+                    console.error("서버 응답 상태:", error.response.status);
+                    console.error("서버 응답 데이터:", error.response.data);
+                }
+            }
+        };
+    
+        fetchAvailableTimes();
+    }, [projectId]);
+    
 
     const selectedSet = new Set(selectedTimes || []);
 
@@ -47,10 +70,36 @@ function CheckTime() {
     const timeSlots = generateTimeSlots();
     const dateColumns = generateDateColumns();
 
+    const getCellClassName = (date, time) => {
+        const dateStr = date.toISOString().split("T")[0];
+        const [hour, minute] = time.split(":").map(Number);
+        const cellTime = new Date(date);
+        cellTime.setHours(hour);
+        cellTime.setMinutes(minute);
+
+        // 내가 선택한 시간인지 확인
+        const dateIndex = dateColumns.findIndex(d => d.toDateString() === date.toDateString());
+        const myTimeKey = `${time}-${dateIndex}`;
+        const isMine = selectedSet.has(myTimeKey);
+
+        // 참여자 중 가능한 사람 수 계산
+        const othersCount = availableTimes.filter(({ userId, date: d, startTime, endTime }) => {
+            if (d !== dateStr) return false;
+            const start = new Date(`${d}T${startTime}`);
+            const end = new Date(`${d}T${endTime}`);
+            return cellTime >= start && cellTime < end;
+        }).length;
+
+        if (isMine && othersCount > 0) return "both";
+        if (isMine) return "mine";
+        if (othersCount > 0) return `others-${othersCount > 3 ? 3 : othersCount}`;
+        return "";
+    };
+
     return (
         <S.Container>
             <S.Header>
-                <S.BackButton onClick={()=> navigate(-1)}>
+                <S.BackButton onClick={() => navigate("/whole-schedule")}>
                     <img src={backIcon} alt="Back" width="32" height="32" />
                 </S.BackButton>
                 <S.Title>New Plan Name</S.Title>
@@ -69,15 +118,9 @@ function CheckTime() {
                         {timeSlots.map((time, i) => (
                             <tr key={i}>
                                 <td>{time}</td>
-                                {dateColumns.map((_, j) => {
-                                    const timeKey = `${time}-${j}`;
-                                    return (
-                                        <td 
-                                            key={j} 
-                                            className={selectedSet.has(timeKey) ? "selected" : ""}
-                                        />
-                                    );
-                                })}
+                                {dateColumns.map((day, j) => (
+                                    <td key={j} className={getCellClassName(day, time)} />
+                                ))}
                             </tr>
                         ))}
                     </tbody>
@@ -90,15 +133,13 @@ function CheckTime() {
                     {participants.map((participant, index) => (
                         <ParticipantsBlock key={index} participant={participant} />
                     ))}
-                    
-                    {/* 아직 참여하지 않은 자리 표시 */}
                     {Array(headCount - participants.length).fill("?").map((_, index) => (
                         <ParticipantsBlock key={`empty-${index}`} participant="?" />
                     ))}
                 </S.Participants>
             </S.Main>
             <S.Bottom>
-                <S.SelectButton onClick={()=> navigate(-1)}>수정하기</S.SelectButton>
+                <S.SelectButton onClick={() => navigate(-1)}>수정하기</S.SelectButton>
             </S.Bottom>
         </S.Container>
     );

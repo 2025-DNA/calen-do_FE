@@ -127,8 +127,24 @@ export const Table = styled.table`
         background-color: #FFFFFF; /* 고정된 열의 배경색 */
     }
 
-    .selected {
-        background-color: #FFB5B5; /* ✅ 선택된 시간 칸 스타일 */
+    td.mine {
+        background-color:rgb(247, 212, 224);
+    }
+
+    td.others-1 {
+        background-color:rgb(243, 195, 213);
+    }
+
+    td.others-2 {
+        background-color:rgb(236, 168, 200);
+    }
+
+    td.others-3 {
+        background-color:rgb(224, 146, 182);
+    }
+
+    td.both {
+        background-color:rgb(214, 117, 154);
     }
 `;
 

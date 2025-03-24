@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import styled from "styled-components";
 import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
 import "react-calendar/dist/Calendar.css";
@@ -14,9 +15,32 @@ function CreatePlan() {
     const [date, setDate] = useState(null);
     const [startTime, setStartTime] = useState("09:00:00");
     const [endTime, setEndTime] = useState("22:00:00");
-    const [meetingName, setMeetingName] = useState(""); // 회의명 입력
-    const [deadline, setDeadline] = useState(""); // 마감 날짜 입력
+    const [meetingName, setMeetingName] = useState("");
+    const [deadline, setDeadline] = useState("");
+    const [currentUser, setCurrentUser] = useState(null);
+    const [projectId, setProjectId] = useState(50); // 예시값. 필요 시 props나 context 등으로 받기
     const today = new Date();
+
+    useEffect(() => {
+        const fetchCurrentUser = async () => {
+            try {
+                const token = localStorage.getItem("accessToken");
+                if (!token) {
+                    alert("로그인이 필요합니다.");
+                    navigate("/login");
+                    return;
+                }
+                const response = await api.get("/api/users/me", {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                setCurrentUser(response.data);
+            } catch (error) {
+                console.error("사용자 정보 불러오기 실패:", error);
+                alert("사용자 정보를 불러오는 중 오류가 발생했습니다.");
+            }
+        };
+        fetchCurrentUser();
+    }, []);
 
     const handleCreate = async () => {
         if (!date || date.length !== 2 || !meetingName || !deadline) {
@@ -26,19 +50,17 @@ function CreatePlan() {
 
         const [startDate, endDate] = date.map((d) => dayjs(d).format("YYYY-MM-DD"));
         const formattedDeadline = dayjs(deadline).format("YYYY-MM-DDT00:00:00");
-
-        //localStorage에서 accessToken 가져오기
         const accessToken = localStorage.getItem("accessToken");
-        console.log("local token", accessToken);
-        if (!accessToken) {
+
+        if (!accessToken || !currentUser) {
             alert("로그인이 필요합니다.");
             navigate("/login");
             return;
         }
 
         const requestData = {
-            projectId: 9, // 실제 프로젝트 ID 필요
-            userId: 14, // 로그인된 사용자 ID 필요
+            projectId,
+            userId: currentUser.userId,
             startDate,
             endDate,
             startTime,
@@ -49,31 +71,74 @@ function CreatePlan() {
 
         try {
             const response = await api.post(
-                `/api/timetables/${requestData.projectId}/create`,
+                `/api/timetables/${projectId}/create`,
+                requestData,
                 {
-                    method: "POST",
                     headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${accessToken}`, // ✅ 추가된 부분
-                    },
-                    body: JSON.stringify(requestData),
-                    mode: "cors", // ✅ CORS 모드 설정
-                    credentials: "include", // ✅ 세션 기반 인증을 사용할 경우 추가
+                        Authorization: `Bearer ${accessToken}`
+                    }
                 }
             );
 
-            if (!response.ok) throw new Error("API 요청 실패");
-
-            const responseData = await response.json();
             alert("일정이 생성되었습니다.");
-            console.log("✅ 서버 응답:", responseData);
+            console.log("✅ 서버 응답:", response.data);
 
-            navigate("/time", { state: responseData }); // 성공 시 이동
+            const timetableId = response.data.timetableId;
+
+            // 생성 후 역할에 따라 이동
+            checkCaptainAndRedirect(
+                projectId,
+                startDate,
+                endDate,
+                startTime,
+                endTime,
+                timetableId
+            );
+
         } catch (error) {
             console.error("API 요청 에러:", error);
             alert("일정 생성에 실패했습니다.");
         }
     };
+
+    const checkCaptainAndRedirect = async (projectId, startDate, endDate, startTime, endTime, timetableId) => {
+        try {
+            const accessToken = localStorage.getItem("accessToken");
+            console.log("🔑 accessToken:", accessToken);
+
+    
+            const userRes = await api.get("/api/users/me", {
+                headers: { Authorization: `Bearer ${accessToken}` }
+            });
+            const currentUserId = userRes.data.userId;
+    
+            const projectRes = await api.get(`/api/projects/${projectId}`, {
+                headers: { Authorization: `Bearer ${accessToken}` }
+            });
+            const createdBy = projectRes.data.createdBy;
+    
+            if (currentUserId === createdBy) {
+                alert("✅ captain입니다.");
+            } else {
+                alert("✅ member입니다.");
+            }
+    
+            navigate(`/time?projectId=${projectId}`, {
+                state: {
+                date: [startDate, endDate],
+                startTime,
+                endTime,
+                timetableId,
+                projectId, // ✅ 이거도 state에 넣어야 CreateTime에서 받을 수 있음
+                userId: currentUserId // ✅ userId 추가
+            }
+            });
+        } catch (error) {
+            console.error("❌ 사용자/프로젝트 정보 조회 실패:", error);
+            alert("사용자 정보 확인 중 오류가 발생했습니다.");
+        }
+    };
+    
 
     return (
         <S.Container className="create-plan">

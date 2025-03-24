@@ -16,7 +16,6 @@
     "react-router-dom": "^7.1.5",
     "react-scripts": "5.0.1",
     "styled-components": "^6.1.14"
-    
   },
   "scripts": {
     "start": "set PORT=8080 && react-scripts start",
@@ -42,6 +41,8 @@
       "last 1 safari version"
     ]
   },
-  "proxy": "https://calendo.site"
-  
+  "proxy": "https://calendo.site",
+  "devDependencies": {
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11"
+  }
 }

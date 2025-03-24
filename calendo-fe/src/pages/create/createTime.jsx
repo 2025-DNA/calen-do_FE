@@ -1,16 +1,62 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import * as S from "./styled";
+import api from "../../services/api";
 import backIcon from "../../assets/icons/backbtn.svg";
+import dayjs from "dayjs";
 
 function CreateTime() {
     const navigate = useNavigate();
     const location = useLocation();
-    const { date, startTime, endTime } = location.state || {}; // ✅ 전달된 데이터 받기
-    const [selectedTimes, setSelectedTimes] = useState(new Set()); // ✅ 선택된 시간 저장
+    const { projectId, userId } = location.state || {};
+
+    const [date, setDate] = useState(null);
+    const [startTime, setStartTime] = useState(null);
+    const [endTime, setEndTime] = useState(null);
+    const [timetableId, setTimetableId] = useState(null);
+    const [selectedTimes, setSelectedTimes] = useState(new Set());
     const [isMouseDown, setIsMouseDown] = useState(false);
 
-    //시간 목록 생성
+    useEffect(() => {
+        const fetchLatestTimetable = async () => {
+            try {
+                const accessToken = localStorage.getItem("accessToken");
+                const response = await api.get(
+                    `/api/projects/${projectId}/available_times/latest-timetable`,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${accessToken}`
+                        }
+                    }
+                );
+    
+                console.log("📦 latest timetable 응답:", response.data); // ← 응답 확인용
+    
+                const data = response.data;
+    
+                // 값이 없으면 예외 처리
+                if (!data || !data.startDate || !data.endDate || !data.startTime || !data.endTime || !data.timetableId) {
+                    alert("타임테이블 정보가 올바르지 않습니다. 팀장이 먼저 일정을 생성해야 합니다.");
+                    navigate("/");
+                    return;
+                }
+    
+                // 데이터 세팅
+                setDate([data.startDate, data.endDate]);
+                setStartTime(data.startTime.split(":")[0]); // ✅ 이제 안전하게 사용 가능
+                setEndTime(data.endTime.split(":")[0]);
+                setTimetableId(data.timetableId);
+            } catch (error) {
+                console.error("❌ 타임테이블 불러오기 실패:", error);
+                alert("타임테이블 정보를 불러오는 데 실패했습니다.");
+                navigate("/");
+            }
+        };
+    
+        if (projectId) fetchLatestTimetable();
+    }, [projectId, navigate]);
+    
+    // 테이블 생성 관련 함수
     const generateTimeSlots = () => {
         if (!startTime || !endTime) return [];
         const times = [];
@@ -25,7 +71,6 @@ function CreateTime() {
         return times;
     };
 
-    //날짜 목록 생성
     const generateDateColumns = () => {
         if (!date || !Array.isArray(date)) return [];
         const [startDate, endDate] = date;
@@ -41,44 +86,87 @@ function CreateTime() {
     const timeSlots = generateTimeSlots();
     const dateColumns = generateDateColumns();
 
-    //클릭 시 선택/해제
-    const handleMouseDown = (time) => {
+    const handleMouseDown = (timeKey) => {
         setIsMouseDown(true);
-        setSelectedTimes(prev => {
+        setSelectedTimes((prev) => {
             const newSet = new Set(prev);
-            newSet.has(time) ? newSet.delete(time) : newSet.add(time);
+            newSet.has(timeKey) ? newSet.delete(timeKey) : newSet.add(timeKey);
             return newSet;
         });
     };
 
-    //드래그 시 선택 추가
-    const handleMouseMove = (time) => {
+    const handleMouseMove = (timeKey) => {
         if (isMouseDown) {
-            setSelectedTimes(prev => {
+            setSelectedTimes((prev) => {
                 const newSet = new Set(prev);
-                newSet.add(time);
+                newSet.add(timeKey);
                 return newSet;
             });
         }
     };
 
-    //check 페이지로 시간 데이터 전송
-    const handleCreate = () => {
-        navigate("/check", { state: { date, startTime, endTime, selectedTimes: Array.from(selectedTimes) } });
-    };
-    
-
     const handleMouseUp = () => {
         setIsMouseDown(false);
     };
 
+    const handleCreate = async () => {
+        const accessToken = localStorage.getItem("accessToken");
+        if (!accessToken) {
+            alert("로그인이 필요합니다.");
+            navigate("/login");
+            return;
+        }
+
+        const payload = [];
+
+        dateColumns.forEach((dateObj, dateIdx) => {
+            const selectedForDate = Array.from(selectedTimes)
+                .filter((key) => key.endsWith(`-${dateIdx}`))
+                .map((key) => key.split("-")[0]);
+
+            if (selectedForDate.length > 0) {
+                selectedForDate.sort();
+                const first = selectedForDate[0];
+                const last = selectedForDate[selectedForDate.length - 1];
+
+                payload.push({
+                    timetableId,
+                    projectId,
+                    userId,
+                    date: dayjs(dateObj).format("YYYY-MM-DD"),
+                    startTime: `${first}:00`,
+                    endTime: `${last}:00`
+                });
+            }
+        });
+
+        try {
+            await api.post(`/api/projects/${projectId}/available_times`, payload, {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    "Content-Type": "application/json"
+                }
+            });
+            alert("가능 시간을 성공적으로 저장했습니다.");
+            navigate("/check");
+        } catch (error) {
+            console.error("❌ 가능 시간 전송 실패:", error);
+            alert("가능 시간을 저장하는 중 오류가 발생했습니다.");
+        }
+    };
+
+    // ⏳ 타임테이블이 불러오기 전이면 대기 화면
+    if (!date || !startTime || !endTime || !timetableId) {
+        return <div>타임테이블 정보를 불러오는 중입니다...</div>;
+    }
+
     return (
         <S.Container>
             <S.Header>
-                <S.BackButton onClick={()=> navigate(-1)}>
+                <S.BackButton onClick={() => navigate(-1)}>
                     <img src={backIcon} alt="Back" width="32" height="32" />
                 </S.BackButton>
-                <S.Title>New Plan Name</S.Title>
+                <S.Title>가능 시간 선택</S.Title>
             </S.Header>
             <S.Body>
                 <S.Table onMouseUp={handleMouseUp}>
@@ -97,8 +185,8 @@ function CreateTime() {
                                 {dateColumns.map((_, j) => {
                                     const timeKey = `${time}-${j}`;
                                     return (
-                                        <td 
-                                            key={j} 
+                                        <td
+                                            key={j}
                                             className={selectedTimes.has(timeKey) ? "selected" : ""}
                                             onMouseDown={() => handleMouseDown(timeKey)}
                                             onMouseMove={() => handleMouseMove(timeKey)}
