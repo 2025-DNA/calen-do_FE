@@ -1,17 +1,14 @@
 import React from 'react';
-import styled from 'styled-components';
+import styled from "styled-components";
 
-const Participant = styled.div`
-  display: inline-block;
-  padding: 8px 12px;
-  margin: 5px;
-  color: ${({ isFilled }) => (isFilled ? "#EA6B6B" : "#ddd")};
-  border-radius: 5px;
-  font-size: 14px;
+const Block = styled.div.attrs(() => ({}))`
+  background-color: ${({ $isFilled }) => ($isFilled ? "#000" : "#ccc")};
 `;
 
 const ParticipantsBlock = ({ participant }) => {
-  return <Participant isFilled={participant !== "?"}>{participant}</Participant>;
+    const isFilled = participant !== "?";
+    return <Block $isFilled={isFilled}>{participant}</Block>;
 };
+
 
 export default ParticipantsBlock;

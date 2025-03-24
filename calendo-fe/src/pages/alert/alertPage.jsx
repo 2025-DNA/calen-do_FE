@@ -31,6 +31,42 @@ function AlertPage() {
     // 모달 닫기
     const closeModal = () => setIsModalOpen(false);
 
+    const handleReject = async () => {
+        if (!selectedAlert) return;
+    
+        try {
+            const accessToken = localStorage.getItem("accessToken");
+    
+            if (!accessToken) {
+                alert("로그인이 필요합니다.");
+                navigate("/login");
+                return;
+            }
+    
+            const response = await api.put(
+                `/api/notifications/${selectedAlert.id}/respond`,
+                { accepted: false }, // ❌ 거절 처리
+                {
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`
+                    }
+                }
+            );
+    
+            console.log("🚫 알림 거절 완료:", response.data);
+            alert("알림을 거절하였습니다.");
+    
+            // UI에서 해당 알림 제거
+            setAlerts((prevAlerts) => prevAlerts.filter(alert => alert.id !== selectedAlert.id));
+    
+            closeModal();
+        } catch (error) {
+            console.error("❌ 알림 거절 실패:", error);
+            alert("알림을 거절하는 중 오류가 발생했습니다.");
+        }
+    };
+    
+
     // 알림 수락 요청
     const handleConfirm = async () => {
         if (!selectedAlert) return;
@@ -44,16 +80,19 @@ function AlertPage() {
                 return;
             }
 
-            const response = await api.put(`/api/notifications/${selectedAlert.id}/respond`, 
-                { status: "ACCEPTED" }, // 서버에 수락 상태 전달
+            const response = await api.put(`/api/notifications/${selectedAlert.id}/respond`,
+                { accepted: true }, // ✅ boolean 형식으로 변경
                 {
                     headers: {
-                        Authorization: `Bearer ${accessToken}`
-                    }
+                    Authorization: `Bearer ${accessToken}`
+                }
                 }
             );
+            
+            console.log("✅ 알림 상태:", response.data);
+            console.log("✅ 알림 응답 상태:", response.data.status);
+            console.log("✅ 알림 응답 메시지:", response.data.message);
 
-            console.log("✅ 알림 수락 완료:", response.data);
             alert("알림을 수락하였습니다.");
 
             // UI에서 해당 알림 제거
@@ -122,8 +161,9 @@ function AlertPage() {
             </S.Main>
 
             {isModalOpen && (
-                <NotiModal onConfirm={handleConfirm} onCancel={closeModal} />
-            )}
+                <NotiModal onConfirm={handleConfirm} onCancel={handleReject} />
+                )}
+
         </S.Container>
     );
 }
