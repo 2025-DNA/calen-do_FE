@@ -565,71 +565,6 @@ useEffect(() => {
   };
   
 
-
-
-
-  
-  // 📌 일정 조회 (선택한 날짜의 일정 불러오기)
-  // const fetchEventsForDate = async (date) => {
-  //   //const dateKey = date.toISOString().split("T")[0]; // YYYY-MM-DD
-  //   const formattedDate = formatDateToYYYYMMDD(date);
-
-    
-  //   try {
-  //     let token = localStorage.getItem("access-token") ||
-  //                 localStorage.getItem("accessToken") ||
-  //                 localStorage.getItem("jwt_token");
-  
-  //     if (!token) {
-  //         console.error("❌ Access Token이 없습니다! 로그인 필요");
-  //         return;
-  //     }
-              
-  //     console.log(`📌 보낼 토큰: Bearer ${token}`);
-  
-  //     const response = await fetch(`https://calendo.site/api/schedules?date=${dateKey}`, {
-  //       method: "GET",
-  //       headers: {
-  //         "Content-Type": "application/json",
-  //         "Authorization": `Bearer ${token}`, // ✅ 토큰 포함
-  //       },
-  //       credentials: "include", // ✅ 쿠키 기반 인증 사용하는 경우 필요
-  //     });
-  
-  //     if (!response.ok) {
-  //       throw new Error(`일정 조회 실패: ${response.status}`);
-  //     }
-  
-  //     const data = await response.json();
-  //     console.log("✅ 조회한 일정 데이터:", data);
-  //     console.log("📅 클릭한 날짜:", dateKey); // 2025-03-25
-  
-
-  //     console.log("📌 보낼 날짜:", dateKey);
-  //     console.log("📌 보낼 토큰:", token);
-  //     console.log("📌 요청 주소:", `https://calendo.site/api/schedules?date=${dateKey}`);
-
-  //     // ✅ 서버 응답 형식 맞게 가공
-  //     const transformed = (data || []).map((item) => ({
-  //       id: item.id,
-  //       title: item.title,
-  //       time: `${item.startDateTime.split("T")[1]} - ${item.endDateTime.split("T")[1]}`,
-  //       repeat: item.repeatType?.toLowerCase() || "none",
-  //       color: "#FFCDD2", // 혹시 color 없음 처리
-  //       type: "Schedule",
-  //       completed: false,
-  //       alert: "이벤트 당일(오전 9시)", // 기본 알림값
-  //     }));
-  
-  //     setEvents((prev) => ({
-  //       ...prev,
-  //       [date.toDateString()]: transformed,
-  //     }));
-  //   } catch (error) {
-  //     console.error("🚨 일정 조회 오류:", error);
-  //   }
-  // };
-  
   
   // 🔧 시간 포맷 변환 함수 (예: "22:32" → "10:32 PM")
   const formatTime = (isoString) => {
@@ -650,33 +585,6 @@ const handleDayClick = (date) => {
   fetchTodosForDate(date); 
 };
 
-
-// 📌 일정 수정 (PUT 요청)
-// const updateEvent = async (scheduleId, updatedEvent) => {
-//   try {
-//     const response = await fetch(`/api/schedules/${scheduleId}`, {
-//       method: "PUT",
-//       headers: { "Content-Type": "application/json" },
-//       body: JSON.stringify(updatedEvent),
-//     });
-
-//     if (!response.ok) throw new Error("일정 수정 실패");
-
-//     setEvents((prev) => {
-//       const dateKey = selectedDate.toDateString();
-//       return {
-//         ...prev,
-//         [dateKey]: prev[dateKey].map((event) =>
-//           event.id === scheduleId ? { ...event, ...updatedEvent } : event
-//         ),
-//       };
-//     });
-
-//     closeModal();
-//   } catch (error) {
-//     console.error("일정 수정 오류:", error);
-//   }
-// };
 
 //일정 수정
 const updateEvent = async (scheduleId, updatedEvent) => {
@@ -716,8 +624,15 @@ const updateEvent = async (scheduleId, updatedEvent) => {
 
     if (!response.ok) throw new Error("일정 수정 실패");
 
-    const result = await response.json();
-    console.log("✅ 일정 수정 성공:", result);
+    const contentType = response.headers.get("content-type");
+    if (contentType && contentType.includes("application/json")) {
+      const result = await response.json();
+      console.log("✅ 일정 수정 성공 (JSON):", result);
+    } else {
+      const text = await response.text();
+      console.log("✅ 일정 수정 성공 (문자열):", text);
+    }
+
 
     // 필요한 후처리: 모달 닫기, 일정 새로고침 등
   } catch (error) {
@@ -753,20 +668,7 @@ const handleDeleteEvent = async () => {
   }
 };
 
-// 📌 투두리스트 조회 (선택한 투두 정보 가져오기)
-// const fetchTodo = async (todoId) => {
-//   try {
-//     const response = await fetch(`/api/todo/${todoId}`);
 
-//     if (!response.ok) throw new Error("투두 조회 실패");
-
-//     const data = await response.json();
-//     return data; // 서버에서 받은 투두 데이터 반환
-//   } catch (error) {
-//     console.error("투두 조회 오류:", error);
-//     return null;
-//   }
-// };
 const fetchTodosForDate = async (date) => {
   const formattedDate = formatDateToYYYYMMDD(date); // "2025-02-08" 형태로 변환
   const token = localStorage.getItem("access-token") ||
@@ -1123,42 +1025,54 @@ const handleSave = async () => {
   let updatedEvents = { ...projectData[selectedProject]?.events };
   let updatedTodos = { ...todoLists };
 
+  const toISOStringWithoutSeconds = (date, time) => {
+    if (typeof time !== "string") {
+      console.error("❌ 시간 값이 문자열이 아님:", time);
+      return "";
+    }
+    const [hour, minute] = time.split(":");
+    const dt = new Date(date);
+    dt.setHours(Number(hour), Number(minute), 0, 0);
+    return dt.toISOString().slice(0, 19);
+  };
+
   while (currentDate <= endDate) {
     const dateKey = currentDate.toDateString();
+    const newItem = {
+      title: newTitle,
+      type: eventType,
+      color: projectData[selectedProject]?.color || "#FFCDD2",
+      time: selectedTime,
+      repeat: repeatOption,
+      alert: alertOption,
+      completed: false,
+    };
 
     if (eventType === "Schedule") {
       if (editingIndex !== null) {
         if (!updatedEvents[dateKey]) updatedEvents[dateKey] = [];
+        const existing = updatedEvents[dateKey][editingIndex];
+        if (existing?.id) {
+          const startTime = selectedStartTime instanceof Date ? formatToHHMM(selectedStartTime) : selectedStartTime;
+          const endTime = selectedEndTime instanceof Date ? formatToHHMM(selectedEndTime) : selectedEndTime;
 
-        const original = updatedEvents[dateKey][editingIndex]; // 기존 일정 참조
-        const updatedItem = {
-          ...original, // 기존 id 유지
-          title: newTitle,
-          type: eventType,
-          time: selectedTime,
-          repeat: repeatOption,
-          alert: alertOption,
-          color: projectData[selectedProject]?.color || "#FFCDD2",
-          completed: false,
-        };
+          const updated = {
+            ...newItem,
+            id: existing.id,
+            date: selectedStartDate,
+            startTime,
+            endTime,
+            repeatType: repeatOption?.toUpperCase() || "NONE",
+          };
 
-        updatedEvents[dateKey][editingIndex] = updatedItem;
-        setEditingIndex(null);
-
-        // 🔥 백엔드에 일정 수정 요청
-        if (original?.id) {
-          await updateEvent(original.id, {
-            ...updatedItem,
-            date: currentDate,
-            startTime: selectedStartTime,
-            endTime: selectedEndTime,
-            repeatType: repeatOption?.toUpperCase() || "NONE"
-          });
+          await updateEvent(existing.id, updated);
+          updatedEvents[dateKey][editingIndex] = { ...existing, ...newItem };
+        } else {
+          console.warn("❌ 기존 일정에 ID 없음:", existing);
         }
-
+        setEditingIndex(null);
       } else {
-        const added = await addEvent(); // ✅ 서버에 추가 요청
-
+        const added = await addEvent();
         if (added) {
           const updatedItem = {
             ...added,
@@ -1174,21 +1088,10 @@ const handleSave = async () => {
           updatedEvents[dateKey].push(updatedItem);
         }
 
-        // 🔁 반복 일정 추가 (프론트 상태만)
         const createRepeatItem = (dateObj) => ({
           ...newItem,
           color: projectData[selectedProject]?.color || "#FFCDD2",
         });
-
-        const newItem = {
-          title: newTitle,
-          type: eventType,
-          color: projectData[selectedProject]?.color || "#FFCDD2",
-          time: selectedTime,
-          repeat: repeatOption,
-          alert: alertOption,
-          completed: false,
-        };
 
         if (repeatOption === "weekly") {
           for (let i = 1; i <= 10; i++) {
@@ -1222,7 +1125,6 @@ const handleSave = async () => {
       }
 
       setEvents(updatedEvents);
-
     } else if (eventType === "To-do") {
       if (!updatedTodos[dateKey]) updatedTodos[dateKey] = [];
 
@@ -1232,18 +1134,14 @@ const handleSave = async () => {
           console.error("❌ 수정할 투두에 ID가 없습니다:", todoToUpdate);
           return;
         }
-
         await updateTodo(todoToUpdate.id, newTitle);
-
         updatedTodos[dateKey][editingIndex] = {
           ...todoToUpdate,
-          title: newTitle,
+          title: newTitle
         };
         setEditingIndex(null);
-
       } else {
         const addedTodo = await addTodo(newTitle, selectedDate);
-
         if (addedTodo && addedTodo.id) {
           const newTodoItem = {
             id: addedTodo.id,
@@ -1289,6 +1187,7 @@ const handleSave = async () => {
 
   closeModal();
 };
+
 
 
 const formatToHHMM = (date) => {
