@@ -42,6 +42,9 @@ const WholeSchedule = () => {
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
 
+  const [projectMembers, setProjectMembers] = useState({});
+
+
   // ✅ localStorage에서 닉네임 불러오기
   const storedUser = localStorage.getItem("user");
   const extractedNickname = storedUser ? JSON.parse(storedUser).email.split("@")[0] : "unknown";
@@ -49,45 +52,275 @@ const WholeSchedule = () => {
 
   // ✅ 프로젝트 목록 및 데이터 관리
   const [projects, setProjects] = useState([defaultProject]);
-  const [selectedProject, setSelectedProject] = useState(defaultProject);
+
+
+ 
   const [projectData, setProjectData] = useState({
-    [defaultProject]: { events: {}, todoLists: {}, color: "#FFCDD2", // ✅ 기본 색상 추가
-  },
+    [defaultProject]: { events: {}, todoLists: {}, color: "#FFCDD2" },
   });
-  const location = useLocation();
-
-  // 🔹 Invite에서 넘어온 프로젝트 정보 처리
+  
+  const [selectedProject, setSelectedProject] = useState(defaultProject);
+  
   useEffect(() => {
-    const state = location.state;
-    if (state?.projectId && state?.projectName) {
-      const newProjectName = state.projectName;
-      const newProjectId = state.projectId;
-      const members = state.invitedUsers || [];
-
-      // 이미 존재하지 않는 프로젝트라면 추가
-      if (!projects.includes(newProjectName)) {
-        setProjects((prev) => [...prev, newProjectName]);
-
-        setProjectData((prev) => ({
-          ...prev,
-          [newProjectName]: {
-            id: newProjectId,
-            events: {},
-            todoLists: {},
-            color: "#FFCDD2",
-          },
-        }));
-
-        setProjectMembers((prev) => ({
-          ...prev,
-          [newProjectName]: members.map((m) => m.nickName || m),
-        }));
-
-        setSelectedProject(newProjectName);
-        setSelectedColor("#FFCDD2");
+    const savedProject = localStorage.getItem("selectedProject");
+    if (savedProject) {
+      setSelectedProject(savedProject);
+      const projectInfo = projectData[savedProject];
+      if (projectInfo?.id) {
+        fetchProjectSchedules(projectInfo.id);
       }
     }
-  }, [location.state]);
+  }, []);
+  
+
+  useEffect(() => {
+    if (!selectedProject) return;
+  
+    const projectInfo = projectData[selectedProject];
+    if (projectInfo && projectInfo.id) {
+      fetchProjectSchedules(projectInfo.id);
+    } else {
+      console.warn("⚠️ projectId 없음:", projectInfo);
+    }
+  }, [selectedProject, projectData]);
+  
+  
+
+ //프로젝트 목록 조회하기
+ useEffect(() => {
+  const fetchProjects = async () => {
+    const token = localStorage.getItem("accessToken");
+    if (!token) {
+      console.error("❌ Access Token이 없습니다!");
+      return;
+    }
+    console.log("📌 access-token:", token)
+
+    try {
+      const response = await fetch(`https://calendo.site/api/projects`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+        },
+        credentials: "include",
+      });
+
+      if (!response.ok) throw new Error("프로젝트 목록 조회 실패");
+
+      const data = await response.json();
+      console.log("✅ 프로젝트 목록:", data);
+
+      const projectMap = {};
+      const names = data.map(project => {
+        const name = project.projectName; // ✅ 여기가 핵심
+        projectMap[name] = {
+          id: project.id,
+          events: {},
+          todoLists: {},
+          color: "#FFCDD2"
+        };
+        return name; // ✅ name은 projectName에서 가져와야 함
+      });
+
+
+      // ✅ state 업데이트
+      setProjects([defaultProject, ...names]);
+      setProjectData((prev) => ({
+        ...prev,
+        ...projectMap,
+      }));
+    } catch (error) {
+      console.error("❌ 프로젝트 목록 불러오기 실패:", error);
+    }
+  };
+
+  fetchProjects();
+}, []);
+
+// useEffect(() => {
+//   const fetchProjects = async () => {
+//     const token =
+//       localStorage.getItem("access-token") ||
+//       localStorage.getItem("accessToken") ||
+//       localStorage.getItem("jwt_token");
+
+//     if (!token) {
+//       console.error("❌ Access Token이 없습니다!");
+//       return;
+//     }
+//     console.log("📌 access-token:", token);
+
+//     try {
+//       const response = await fetch(`https://calendo.site/api/projects`, {
+//         method: "GET",
+//         headers: {
+//           "Authorization": `Bearer ${token}`,
+//         },
+//         credentials: "include",
+//       });
+
+//       if (!response.ok) throw new Error("프로젝트 목록 조회 실패");
+
+//       const data = await response.json();
+//       console.log("✅ 프로젝트 목록:", data);
+
+//       // ✅ 프로젝트 이름 목록 추출
+//       const names = data.map(project => project.projectName);
+
+//       // ✅ 프로젝트 데이터 구조화
+//       const projectMap = {};
+//       for (const project of data) {
+//         const { id, projectName, color } = project;
+//         projectMap[projectName] = {
+//           id: project.id,
+//           events: {},
+//           todoLists: {},
+//           color: color || "#FFCDD2",
+//         };
+//       }
+
+//       // ✅ state 업데이트
+//       setProjects([defaultProject, ...names]);
+//       setProjectData(prev => ({
+//         ...prev,
+//         ...projectMap,
+//       }));
+//     } catch (error) {
+//       console.error("❌ 프로젝트 목록 불러오기 실패:", error);
+//     }
+//   };
+
+//   fetchProjects();
+// }, []);
+
+
+// useEffect(() => {
+//   const fetchProjects = async () => {
+//     const token =
+//       localStorage.getItem("access-token") ||
+//       localStorage.getItem("accessToken") ||
+//       localStorage.getItem("jwt_token");
+
+//     if (!token) {
+//       console.error("❌ Access Token이 없습니다!");
+//       return;
+//     }
+//     console.log("📌 access-token:", token);
+
+//     try {
+//       const response = await fetch(`https://calendo.site/api/projects`, {
+//         method: "GET",
+//         headers: {
+//           "Authorization": `Bearer ${token}`,
+//         },
+//         credentials: "include",
+//       });
+
+//       if (!response.ok) throw new Error("프로젝트 목록 조회 실패");
+
+//       const data = await response.json();
+//       console.log("✅ 프로젝트 목록:", data);
+//       console.log("📦 받아온 프로젝트 전체 데이터:", data); // 👉 이거 여기 넣기
+
+//       // ✅ 프로젝트 이름 목록 추출
+//       const names = data.map(project => project.projectName);
+
+//       // ✅ 프로젝트 데이터 구조화
+//       const projectMap = {};
+//       for (const project of data) {
+//         const { id, projectName, color } = project;
+//         projectMap[projectName] = {
+//           id,
+//           events: {},
+//           todoLists: {},
+//           color: color || "#FFCDD2",
+//         };
+//       }
+
+//       // ✅ state 업데이트
+//       setProjects([defaultProject, ...names]);
+//       setProjectData(prev => ({
+//         ...prev,
+//         ...projectMap,
+//       }));
+
+//       // ✅ selectedProject 복원 (이름이 실제 프로젝트에 있을 때만 복원) 👉 이거 여기 넣기
+//       const savedProject = localStorage.getItem("selectedProject");
+//       if (savedProject && projectMap[savedProject]) {
+//         setSelectedProject(savedProject);
+//       } else {
+//         const firstProject = names[0] || defaultProject;
+//         setSelectedProject(firstProject);
+//       }
+
+//     } catch (error) {
+//       console.error("❌ 프로젝트 목록 불러오기 실패:", error);
+//     }
+//   };
+
+//   fetchProjects();
+// }, []);
+
+
+
+
+
+//팀원 정보 조회
+useEffect(() => {
+  console.log("🔍 selectedProject:", selectedProject);
+  console.log("🔍 projectData[selectedProject]:", projectData[selectedProject]);
+
+  if (selectedProject && selectedProject !== defaultProject) {
+    const projectId = projectData[selectedProject]?.id;
+
+    if (projectId) {
+      console.log("📡 팀원 조회 projectId:", projectId);
+      fetchProjectMembers(projectId);
+    } else {
+      console.warn("⚠️ projectId가 존재하지 않음:", selectedProject, projectData[selectedProject]);
+    }
+  }
+}, [selectedProject, projectData]);
+
+
+const fetchProjectMembers = async (projectId) => {
+  const token = localStorage.getItem("access-token") ||
+                localStorage.getItem("accessToken") ||
+                localStorage.getItem("jwt_token");
+
+  if (!token) {
+    console.error("❌ Access Token이 없습니다!");
+    return;
+  }
+
+  if (!projectId) {
+    console.error("❌ projectId가 없습니다. 팀원 조회 요청 취소");
+    return;
+  }
+
+  try {
+    const response = await fetch(`https://calendo.site/api/projects/${projectId}/members`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+      }
+    });
+
+    if (!response.ok) throw new Error("팀원 조회 실패");
+
+    const data = await response.json();
+    console.log("✅ 팀원 목록 조회 성공:", data);
+
+    // 🔥 상태에 저장
+    setProjectMembers((prev) => ({
+      ...prev,
+      [selectedProject]: data,
+    }));
+  } catch (error) {
+    console.error("❌ 팀원 조회 오류:", error);
+  }
+};
 
 
   
@@ -400,6 +633,11 @@ const updateProjectThemeColor = async (projectId, newColor) => {
                 localStorage.getItem("accessToken") ||
                 localStorage.getItem("jwt_token");
 
+                console.log("🎯 updateProjectThemeColor 실행");
+                console.log("🟢 보낼 토큰:", token);
+                console.log("🟡 프로젝트 ID:", projectId);
+                console.log("🟣 새 색상:", newColor);
+
   if (!token) {
     console.error("❌ Access Token이 없습니다!");
     return;
@@ -410,9 +648,10 @@ const updateProjectThemeColor = async (projectId, newColor) => {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
+        "Authorization": `Bearer ${token}`
       },
-      body: JSON.stringify({ color: newColor }),
+      body: JSON.stringify({ temaColor: newColor }),
+      credentials: "include",
     });
 
     if (response.redirected) {
@@ -447,6 +686,7 @@ const updateProjectThemeColor = async (projectId, newColor) => {
     console.error("프로젝트 테마 색상 변경 오류:", error);
   }
 };
+
 
 // ✅ 프로젝트 테마 색상 조회 (GET /api/projects/{projectId}/mainTheme)
 const fetchProjectThemeColor = async (projectId) => {
@@ -507,10 +747,15 @@ const handleColorChange = async (e) => {
   const newColor = e.target.value;
   setSelectedColor(newColor);
 
+  console.log("🎨 선택된 프로젝트:", selectedProject);
+  console.log("🎨 기본 프로젝트 이름:", defaultProject);
+
   if (selectedProject === defaultProject) {
+    console.log("🟠 메인 색상 변경 로직 실행");
     await updateMainThemeColor(newColor);
   } else {
     const projectId = projectData[selectedProject]?.id;
+    console.log("🔵 프로젝트 색상 변경 로직 실행, projectId:", projectId);
     if (!projectId) {
       console.error("❌ 유효한 프로젝트 ID가 없습니다:", selectedProject);
       return;
@@ -534,25 +779,73 @@ useEffect(() => {
     setNickname(`${storedNickname}의 일정`);
   }, []);
   
-
-  const [projectMembers, setProjectMembers] = useState({
-    "내 일정": ["나", "수현"], // 기본 프로젝트의 팀원
-  });
   const [isMemberDropdownOpen, setIsMemberDropdownOpen] = useState(false);
 
   const toggleMemberDropdown = () => {
     setIsMemberDropdownOpen(!isMemberDropdownOpen);
   };
 
-  const handleAddMember = () => {
-    const newMember = prompt("추가할 팀원 이름을 입력하세요:");
-    if (newMember && newMember.trim() !== "") {
-      setProjectMembers((prev) => ({
-        ...prev,
-        [selectedProject]: [...(prev[selectedProject] || []), newMember],
-      }));
+  // const handleAddMember = () => {
+  //   const newMember = prompt("추가할 팀원 이름을 입력하세요:");
+  //   if (newMember && newMember.trim() !== "") {
+  //     setProjectMembers((prev) => ({
+  //       ...prev,
+  //       [selectedProject]: [...(prev[selectedProject] || []), newMember],
+  //     }));
+  //   }
+  // };
+ 
+
+  const handleAddMember = async () => {
+    const token = localStorage.getItem("access-token") ||
+                  localStorage.getItem("accessToken") ||
+                  localStorage.getItem("jwt_token");
+  
+    const inviteNickname = prompt("초대할 팀원의 닉네임을 입력하세요:");
+    if (!inviteNickname) return alert("닉네임을 입력해야 합니다.");
+  
+    // 프로젝트 ID 가져오기
+    const projectId = projectData[selectedProject]?.id;
+    if (!projectId) {
+      console.error("❌ 프로젝트 ID를 찾을 수 없습니다.");
+      alert("프로젝트 정보를 찾을 수 없습니다.");
+      return;
+    }
+  
+    try {
+      const response = await fetch(`https://calendo.site/api/projects/${projectId}/members`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          nickName: inviteNickname,  // ✅ 닉네임으로 초대
+        }),
+      });
+  
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`서버 응답 실패: ${response.status} - ${errorText}`);
+      }
+  
+      const result = await response.json();
+      console.log("✅ 팀원 초대 성공:", result);
+      alert("팀원이 성공적으로 초대되었습니다!");
+    } catch (error) {
+      console.error("❌ 팀원 초대 실패:", error);
+      alert("팀원 초대에 실패했습니다. 닉네임을 확인해주세요.");
     }
   };
+  
+  
+  
+
+
+
+
+
+
   const formatDateToYYYYMMDD = (date) => {
     const yyyy = date.getFullYear();
     const mm = String(date.getMonth() + 1).padStart(2, "0");
@@ -1505,9 +1798,14 @@ const toggleTodo = async (todo) => {
         {/* 팀원 목록 드롭다운 */}
   {isMemberDropdownOpen && (
     <div className="member-dropdown">
-      {(projectMembers[selectedProject] || []).map((member, index) => (
-        <div key={index} className="member-item">{member}</div>
-      ))}
+      {(projectMembers[selectedProject] || []).map((member, index) => {
+        console.log("👤 팀원 정보:", member); // 🔍 콘솔에 팀원 정보 출력
+        return (
+          <div key={index} className="member-item">
+            {member.nickName || member.name || member.email}
+          </div>
+        );
+      })}
       <div className="member-item invite" onClick={handleAddMember}>
         팀원 초대  <img src={addMemberIcon}  className="spaced-icon" />
       </div>
@@ -1536,13 +1834,10 @@ const toggleTodo = async (todo) => {
         <input
             type="color"
             value={selectedColor}
-            onChange={(e) => {
-              const newColor = e.target.value;
-              setSelectedColor(newColor);  // 조건 없이 무조건 바꿔줌
-            }}
-            onBlur={(e) => {
-              updateMainThemeColor(e.target.value); // 조건 없이 무조건 호출
-            }}
+            onChange={handleColorChange}
+            // onBlur={(e) => {
+            //   updateMainThemeColor(e.target.value); // 조건 없이 무조건 호출
+            // }}
             className="color-picker"
           />
         </div>
