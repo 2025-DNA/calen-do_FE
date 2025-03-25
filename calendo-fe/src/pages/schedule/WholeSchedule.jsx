@@ -478,6 +478,11 @@ const updateProjectThemeColor = async (projectId, newColor) => {
                 localStorage.getItem("accessToken") ||
                 localStorage.getItem("jwt_token");
 
+                console.log("🎯 updateProjectThemeColor 실행");
+                console.log("🟢 보낼 토큰:", token);
+                console.log("🟡 프로젝트 ID:", projectId);
+                console.log("🟣 새 색상:", newColor);
+
   if (!token) {
     console.error("❌ Access Token이 없습니다!");
     return;
@@ -488,9 +493,10 @@ const updateProjectThemeColor = async (projectId, newColor) => {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
+        "Authorization": `Bearer ${token}`
       },
       body: JSON.stringify({ color: newColor }),
+      credentials: "include",
     });
 
     if (response.redirected) {
@@ -525,6 +531,7 @@ const updateProjectThemeColor = async (projectId, newColor) => {
     console.error("프로젝트 테마 색상 변경 오류:", error);
   }
 };
+
 
 // ✅ 프로젝트 테마 색상 조회 (GET /api/projects/{projectId}/mainTheme)
 const fetchProjectThemeColor = async (projectId) => {
@@ -585,10 +592,15 @@ const handleColorChange = async (e) => {
   const newColor = e.target.value;
   setSelectedColor(newColor);
 
+  console.log("🎨 선택된 프로젝트:", selectedProject);
+  console.log("🎨 기본 프로젝트 이름:", defaultProject);
+
   if (selectedProject === defaultProject) {
+    console.log("🟠 메인 색상 변경 로직 실행");
     await updateMainThemeColor(newColor);
   } else {
     const projectId = projectData[selectedProject]?.id;
+    console.log("🔵 프로젝트 색상 변경 로직 실행, projectId:", projectId);
     if (!projectId) {
       console.error("❌ 유효한 프로젝트 ID가 없습니다:", selectedProject);
       return;
@@ -1615,13 +1627,10 @@ const toggleTodo = async (todo) => {
         <input
             type="color"
             value={selectedColor}
-            onChange={(e) => {
-              const newColor = e.target.value;
-              setSelectedColor(newColor);  // 조건 없이 무조건 바꿔줌
-            }}
-            onBlur={(e) => {
-              updateMainThemeColor(e.target.value); // 조건 없이 무조건 호출
-            }}
+            onChange={handleColorChange}
+            // onBlur={(e) => {
+            //   updateMainThemeColor(e.target.value); // 조건 없이 무조건 호출
+            // }}
             className="color-picker"
           />
         </div>
