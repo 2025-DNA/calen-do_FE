@@ -61,6 +61,8 @@ function InvitePage() {
         if (token) {
             setAccessToken(token);
         }
+        console.log("📌 저장된 토큰 확인:", localStorage.getItem("access-token")); // or accessToken
+
     }, []);
 
     useEffect(() => {
@@ -141,16 +143,8 @@ function InvitePage() {
     
             if (response.status === 200) {
                 alert("✅ 프로젝트가 성공적으로 생성되고 초대가 전송되었습니다!");
-            
-                navigate("/whole-schedule", {
-                    state: {
-                        projectId: response.data.projectId, // 서버 응답에서 받은 projectId
-                        projectName: projectName,
-                        invitedUsers: invitedUsers
-                    }
-                });
+                navigate("/invitecheck", { state: { invitedUsers } });
             }
-            
         } catch (error) {
             console.error("❌ 초대 중 오류 발생:", error);
             if (error.response) {
@@ -204,3 +198,4 @@ function InvitePage() {
 }
 
 export { InvitePage };
+
