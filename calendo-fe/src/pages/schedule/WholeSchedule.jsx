@@ -650,7 +650,7 @@ const updateProjectThemeColor = async (projectId, newColor) => {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${token}`
       },
-      body: JSON.stringify({ color: newColor }),
+      body: JSON.stringify({ temaColor: newColor }),
       credentials: "include",
     });
 
