@@ -52,12 +52,39 @@ const WholeSchedule = () => {
 
   // ✅ 프로젝트 목록 및 데이터 관리
   const [projects, setProjects] = useState([defaultProject]);
-  const [selectedProject, setSelectedProject] = useState(defaultProject);
+
+
+ 
   const [projectData, setProjectData] = useState({
-    [defaultProject]: { events: {}, todoLists: {}, color: "#FFCDD2", // ✅ 기본 색상 추가
-  },
+    [defaultProject]: { events: {}, todoLists: {}, color: "#FFCDD2" },
   });
-  const location = useLocation();
+  
+  const [selectedProject, setSelectedProject] = useState(defaultProject);
+  
+  useEffect(() => {
+    const savedProject = localStorage.getItem("selectedProject");
+    if (savedProject) {
+      setSelectedProject(savedProject);
+      const projectInfo = projectData[savedProject];
+      if (projectInfo?.id) {
+        fetchProjectSchedules(projectInfo.id);
+      }
+    }
+  }, []);
+  
+
+  useEffect(() => {
+    if (!selectedProject) return;
+  
+    const projectInfo = projectData[selectedProject];
+    if (projectInfo && projectInfo.id) {
+      fetchProjectSchedules(projectInfo.id);
+    } else {
+      console.warn("⚠️ projectId 없음:", projectInfo);
+    }
+  }, [selectedProject, projectData]);
+  
+  
 
  //프로젝트 목록 조회하기
  useEffect(() => {
@@ -109,6 +136,134 @@ const WholeSchedule = () => {
 
   fetchProjects();
 }, []);
+
+// useEffect(() => {
+//   const fetchProjects = async () => {
+//     const token =
+//       localStorage.getItem("access-token") ||
+//       localStorage.getItem("accessToken") ||
+//       localStorage.getItem("jwt_token");
+
+//     if (!token) {
+//       console.error("❌ Access Token이 없습니다!");
+//       return;
+//     }
+//     console.log("📌 access-token:", token);
+
+//     try {
+//       const response = await fetch(`https://calendo.site/api/projects`, {
+//         method: "GET",
+//         headers: {
+//           "Authorization": `Bearer ${token}`,
+//         },
+//         credentials: "include",
+//       });
+
+//       if (!response.ok) throw new Error("프로젝트 목록 조회 실패");
+
+//       const data = await response.json();
+//       console.log("✅ 프로젝트 목록:", data);
+
+//       // ✅ 프로젝트 이름 목록 추출
+//       const names = data.map(project => project.projectName);
+
+//       // ✅ 프로젝트 데이터 구조화
+//       const projectMap = {};
+//       for (const project of data) {
+//         const { id, projectName, color } = project;
+//         projectMap[projectName] = {
+//           id: project.id,
+//           events: {},
+//           todoLists: {},
+//           color: color || "#FFCDD2",
+//         };
+//       }
+
+//       // ✅ state 업데이트
+//       setProjects([defaultProject, ...names]);
+//       setProjectData(prev => ({
+//         ...prev,
+//         ...projectMap,
+//       }));
+//     } catch (error) {
+//       console.error("❌ 프로젝트 목록 불러오기 실패:", error);
+//     }
+//   };
+
+//   fetchProjects();
+// }, []);
+
+
+// useEffect(() => {
+//   const fetchProjects = async () => {
+//     const token =
+//       localStorage.getItem("access-token") ||
+//       localStorage.getItem("accessToken") ||
+//       localStorage.getItem("jwt_token");
+
+//     if (!token) {
+//       console.error("❌ Access Token이 없습니다!");
+//       return;
+//     }
+//     console.log("📌 access-token:", token);
+
+//     try {
+//       const response = await fetch(`https://calendo.site/api/projects`, {
+//         method: "GET",
+//         headers: {
+//           "Authorization": `Bearer ${token}`,
+//         },
+//         credentials: "include",
+//       });
+
+//       if (!response.ok) throw new Error("프로젝트 목록 조회 실패");
+
+//       const data = await response.json();
+//       console.log("✅ 프로젝트 목록:", data);
+//       console.log("📦 받아온 프로젝트 전체 데이터:", data); // 👉 이거 여기 넣기
+
+//       // ✅ 프로젝트 이름 목록 추출
+//       const names = data.map(project => project.projectName);
+
+//       // ✅ 프로젝트 데이터 구조화
+//       const projectMap = {};
+//       for (const project of data) {
+//         const { id, projectName, color } = project;
+//         projectMap[projectName] = {
+//           id,
+//           events: {},
+//           todoLists: {},
+//           color: color || "#FFCDD2",
+//         };
+//       }
+
+//       // ✅ state 업데이트
+//       setProjects([defaultProject, ...names]);
+//       setProjectData(prev => ({
+//         ...prev,
+//         ...projectMap,
+//       }));
+
+//       // ✅ selectedProject 복원 (이름이 실제 프로젝트에 있을 때만 복원) 👉 이거 여기 넣기
+//       const savedProject = localStorage.getItem("selectedProject");
+//       if (savedProject && projectMap[savedProject]) {
+//         setSelectedProject(savedProject);
+//       } else {
+//         const firstProject = names[0] || defaultProject;
+//         setSelectedProject(firstProject);
+//       }
+
+//     } catch (error) {
+//       console.error("❌ 프로젝트 목록 불러오기 실패:", error);
+//     }
+//   };
+
+//   fetchProjects();
+// }, []);
+
+
+
+
 
 //팀원 정보 조회
 useEffect(() => {
@@ -630,15 +785,67 @@ useEffect(() => {
     setIsMemberDropdownOpen(!isMemberDropdownOpen);
   };
 
-  const handleAddMember = () => {
-    const newMember = prompt("추가할 팀원 이름을 입력하세요:");
-    if (newMember && newMember.trim() !== "") {
-      setProjectMembers((prev) => ({
-        ...prev,
-        [selectedProject]: [...(prev[selectedProject] || []), newMember],
-      }));
+  // const handleAddMember = () => {
+  //   const newMember = prompt("추가할 팀원 이름을 입력하세요:");
+  //   if (newMember && newMember.trim() !== "") {
+  //     setProjectMembers((prev) => ({
+  //       ...prev,
+  //       [selectedProject]: [...(prev[selectedProject] || []), newMember],
+  //     }));
+  //   }
+  // };
+ 
+
+  const handleAddMember = async () => {
+    const token = localStorage.getItem("access-token") ||
+                  localStorage.getItem("accessToken") ||
+                  localStorage.getItem("jwt_token");
+  
+    const inviteNickname = prompt("초대할 팀원의 닉네임을 입력하세요:");
+    if (!inviteNickname) return alert("닉네임을 입력해야 합니다.");
+  
+    // 프로젝트 ID 가져오기
+    const projectId = projectData[selectedProject]?.id;
+    if (!projectId) {
+      console.error("❌ 프로젝트 ID를 찾을 수 없습니다.");
+      alert("프로젝트 정보를 찾을 수 없습니다.");
+      return;
+    }
+  
+    try {
+      const response = await fetch(`https://calendo.site/api/projects/${projectId}/members`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          nickName: inviteNickname,  // ✅ 닉네임으로 초대
+        }),
+      });
+  
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`서버 응답 실패: ${response.status} - ${errorText}`);
+      }
+  
+      const result = await response.json();
+      console.log("✅ 팀원 초대 성공:", result);
+      alert("팀원이 성공적으로 초대되었습니다!");
+    } catch (error) {
+      console.error("❌ 팀원 초대 실패:", error);
+      alert("팀원 초대에 실패했습니다. 닉네임을 확인해주세요.");
     }
   };
+  
+  
+  
+
+
+
+
+
+
   const formatDateToYYYYMMDD = (date) => {
     const yyyy = date.getFullYear();
     const mm = String(date.getMonth() + 1).padStart(2, "0");
