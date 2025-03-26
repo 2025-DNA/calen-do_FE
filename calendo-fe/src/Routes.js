@@ -26,7 +26,7 @@ const Router = () => {
                     <Route path="/invite" element={<InvitePage />} />
                     <Route path="/plan" element={<CreatePlan />} />
                     <Route path="/time" element={<CreateTime />} />
-                    <Route path="/check" element={<CheckTime />} />
+                    <Route path="/check-time/:projectId/:timetableId" element={<CheckTime />} />
                     <Route path="/mypage" element={<MyPage />} />
                     <Route path="/alert" element={<Alert />} />
                     <Route path="/invitecheck" element={<InviteCheck />} />

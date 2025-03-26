@@ -204,4 +204,7 @@ export const Participants = styled.div`
     flex-wrap: wrap;
     gap: 5px;
     margin-top: 10px;
+    color: #666;
+    background-color: transparent;
+
 `;

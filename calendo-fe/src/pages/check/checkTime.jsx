@@ -1,4 +1,4 @@
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import * as S from "./styled";
@@ -8,46 +8,60 @@ import ParticipantsBlock from "../../components/current/participantBlock";
 
 function CheckTime() {
     const navigate = useNavigate();
-    const location = useLocation();
-    const { date, startTime, endTime, selectedTimes, projectId } = location.state || {};
-
-    const headCount = 5;
-    const participants = ["Alice", "Bob", "Charlie"];
-
+    const { projectId, timetableId } = useParams();
     const [availableTimes, setAvailableTimes] = useState([]);
+    const [checkedUserCount, setCheckedUserCount] = useState(0);
+    const [totalMemberCount, setTotalMemberCount] = useState(0);
+    const [timetable, setTimetable] = useState(null);
 
     useEffect(() => {
-        const fetchAvailableTimes = async () => {
-            if (!projectId) {
-                console.warn("projectId가 없습니다.");
+        const fetchData = async () => {
+            if (!projectId || !timetableId) {
+                console.warn("projectId 또는 timetableId가 없습니다.");
                 return;
             }
+    
             try {
-                const response = await axios.get(`https://calendo.site/api/projects/${projectId}/available_times`);
-                console.log("서버 응답 데이터:", response.data); // 이 부분 추가
-                setAvailableTimes(response.data);
-            } catch (error) {
-                console.error("Error fetching available times:", error);
-                if (error.response) {
-                    console.error("서버 응답 상태:", error.response.status);
-                    console.error("서버 응답 데이터:", error.response.data);
+                const accessToken = localStorage.getItem("accessToken");
+                if (!accessToken) {
+                    alert("로그인이 필요합니다.");
+                    navigate("/login");
+                    return;
                 }
+    
+                const res = await axios.get(
+                    `/api/projects/${projectId}/available_times/timetable/${timetableId}`,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${accessToken}`
+                        }
+                    }
+                );
+                console.log("서버 응답:", res.data);
+                setAvailableTimes(res.data.availableTimes);
+                setCheckedUserCount(res.data.checkedUserCount);
+                setTotalMemberCount(res.data.totalMemberCount);
+                if (res.data.availableTimes.length > 0) {
+                    setTimetable(res.data.availableTimes[0].timetableId);
+                }
+            } catch (err) {
+                console.error("데이터 불러오기 실패:", err);
+                alert("타임테이블 데이터를 불러올 수 없습니다.");
             }
         };
     
-        fetchAvailableTimes();
-    }, [projectId]);
+        fetchData();
+    }, [projectId, timetableId, navigate]);
     
 
-    const selectedSet = new Set(selectedTimes || []);
+    if (!timetable) return <div>로딩 중...</div>;
+
+    const selectedSet = new Set(); // 본인 선택 정보는 이 화면에서는 비어 있음 (원하면 추가 가능)
 
     const generateTimeSlots = () => {
-        if (!startTime || !endTime) return [];
+        const start = parseInt(timetable.startTime.split(":")[0]);
+        const end = parseInt(timetable.endTime.split(":")[0]);
         const times = [];
-        let start = parseInt(startTime);
-        let end = parseInt(endTime);
-        if (isNaN(start) || isNaN(end) || start > end) return [];
-
         for (let hour = start; hour <= end; hour++) {
             times.push(`${hour}:00`);
             times.push(`${hour}:30`);
@@ -56,13 +70,13 @@ function CheckTime() {
     };
 
     const generateDateColumns = () => {
-        if (!date || !Array.isArray(date)) return [];
-        const [startDate, endDate] = date;
+        const startDate = new Date(timetable.startDate);
+        const endDate = new Date(timetable.endDate);
         let days = [];
-        let currentDate = new Date(startDate);
-        while (currentDate <= new Date(endDate)) {
-            days.push(new Date(currentDate));
-            currentDate.setDate(currentDate.getDate() + 1);
+        let current = new Date(startDate);
+        while (current <= endDate) {
+            days.push(new Date(current));
+            current.setDate(current.getDate() + 1);
         }
         return days;
     };
@@ -77,13 +91,11 @@ function CheckTime() {
         cellTime.setHours(hour);
         cellTime.setMinutes(minute);
 
-        // 내가 선택한 시간인지 확인
         const dateIndex = dateColumns.findIndex(d => d.toDateString() === date.toDateString());
         const myTimeKey = `${time}-${dateIndex}`;
         const isMine = selectedSet.has(myTimeKey);
 
-        // 참여자 중 가능한 사람 수 계산
-        const othersCount = availableTimes.filter(({ userId, date: d, startTime, endTime }) => {
+        const othersCount = availableTimes.filter(({ date: d, startTime, endTime }) => {
             if (d !== dateStr) return false;
             const start = new Date(`${d}T${startTime}`);
             const end = new Date(`${d}T${endTime}`);
@@ -102,7 +114,7 @@ function CheckTime() {
                 <S.BackButton onClick={() => navigate("/whole-schedule")}>
                     <img src={backIcon} alt="Back" width="32" height="32" />
                 </S.BackButton>
-                <S.Title>New Plan Name</S.Title>
+                <S.Title>{timetable.meetingName}</S.Title>
             </S.Header>
             <S.Body>
                 <S.Table>
@@ -127,13 +139,15 @@ function CheckTime() {
                 </S.Table>
             </S.Body>
             <S.Main>
-                <S.SubTitle>현재 참여자</S.SubTitle>
-                <ProgressBar headCount={headCount} participants={participants} />
+                <S.SubTitle>
+                현재 참여자 ({checkedUserCount}명/총 {totalMemberCount}명)
+                </S.SubTitle>
+                <ProgressBar headCount={totalMemberCount} participants={Array(checkedUserCount).fill("✓")} />
                 <S.Participants>
-                    {participants.map((participant, index) => (
-                        <ParticipantsBlock key={index} participant={participant} />
+                    {Array(checkedUserCount).fill().map((_, index) => (
+                        <ParticipantsBlock key={index} participant={`참여자 ${index + 1}`} />
                     ))}
-                    {Array(headCount - participants.length).fill("?").map((_, index) => (
+                    {Array(totalMemberCount - checkedUserCount).fill().map((_, index) => (
                         <ParticipantsBlock key={`empty-${index}`} participant="?" />
                     ))}
                 </S.Participants>

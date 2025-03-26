@@ -148,7 +148,7 @@ function CreateTime() {
                 }
             });
             alert("가능 시간을 성공적으로 저장했습니다.");
-            navigate("/check");
+            navigate(`/check-time/${projectId}/${timetableId}`);
         } catch (error) {
             console.error("❌ 가능 시간 전송 실패:", error);
             alert("가능 시간을 저장하는 중 오류가 발생했습니다.");
