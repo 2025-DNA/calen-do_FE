@@ -158,7 +158,7 @@ function InvitePage() {
     return (
         <S.Container>
             <S.Header>
-                <S.BackButton onClick={() => navigate("/")}> 
+                <S.BackButton onClick={() => navigate("/whole-schedule")}> 
                     <img src={backIcon} alt="Back" width="32" height="32" />
                 </S.BackButton>
             </S.Header>
