@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import { useNavigate, useLocation } from "react-router-dom";
+import { getAccessToken } from "../../utils/auth";
 import Modal from "react-modal";
 import { FaUser, FaBell, FaCog, FaPlus, FaTrash, FaCheckCircle, FaTimes, FaClock, FaFileAlt } from "react-icons/fa"; 
 import "./WholeSchedule.css";
@@ -89,10 +90,10 @@ const WholeSchedule = () => {
  //프로젝트 목록 조회하기
  useEffect(() => {
   const fetchProjects = async () => {
-    const token = localStorage.getItem("accessToken");
+    const token = getAccessToken();
     if (!token) {
-      console.error("❌ Access Token이 없습니다!");
-      return;
+      console.warn("❌ 토큰 없음. 요청 취소");
+      return null;
     }
     console.log("📌 access-token:", token)
 
@@ -137,133 +138,6 @@ const WholeSchedule = () => {
   fetchProjects();
 }, []);
 
-// useEffect(() => {
-//   const fetchProjects = async () => {
-//     const token =
-//       localStorage.getItem("access-token") ||
-//       localStorage.getItem("accessToken") ||
-//       localStorage.getItem("jwt_token");
-
-//     if (!token) {
-//       console.error("❌ Access Token이 없습니다!");
-//       return;
-//     }
-//     console.log("📌 access-token:", token);
-
-//     try {
-//       const response = await fetch(`https://calendo.site/api/projects`, {
-//         method: "GET",
-//         headers: {
-//           "Authorization": `Bearer ${token}`,
-//         },
-//         credentials: "include",
-//       });
-
-//       if (!response.ok) throw new Error("프로젝트 목록 조회 실패");
-
-//       const data = await response.json();
-//       console.log("✅ 프로젝트 목록:", data);
-
-//       // ✅ 프로젝트 이름 목록 추출
-//       const names = data.map(project => project.projectName);
-
-//       // ✅ 프로젝트 데이터 구조화
-//       const projectMap = {};
-//       for (const project of data) {
-//         const { id, projectName, color } = project;
-//         projectMap[projectName] = {
-//           id: project.id,
-//           events: {},
-//           todoLists: {},
-//           color: color || "#FFCDD2",
-//         };
-//       }
-
-//       // ✅ state 업데이트
-//       setProjects([defaultProject, ...names]);
-//       setProjectData(prev => ({
-//         ...prev,
-//         ...projectMap,
-//       }));
-//     } catch (error) {
-//       console.error("❌ 프로젝트 목록 불러오기 실패:", error);
-//     }
-//   };
-
-//   fetchProjects();
-// }, []);
-
-
-// useEffect(() => {
-//   const fetchProjects = async () => {
-//     const token =
-//       localStorage.getItem("access-token") ||
-//       localStorage.getItem("accessToken") ||
-//       localStorage.getItem("jwt_token");
-
-//     if (!token) {
-//       console.error("❌ Access Token이 없습니다!");
-//       return;
-//     }
-//     console.log("📌 access-token:", token);
-
-//     try {
-//       const response = await fetch(`https://calendo.site/api/projects`, {
-//         method: "GET",
-//         headers: {
-//           "Authorization": `Bearer ${token}`,
-//         },
-//         credentials: "include",
-//       });
-
-//       if (!response.ok) throw new Error("프로젝트 목록 조회 실패");
-
-//       const data = await response.json();
-//       console.log("✅ 프로젝트 목록:", data);
-//       console.log("📦 받아온 프로젝트 전체 데이터:", data); // 👉 이거 여기 넣기
-
-//       // ✅ 프로젝트 이름 목록 추출
-//       const names = data.map(project => project.projectName);
-
-//       // ✅ 프로젝트 데이터 구조화
-//       const projectMap = {};
-//       for (const project of data) {
-//         const { id, projectName, color } = project;
-//         projectMap[projectName] = {
-//           id,
-//           events: {},
-//           todoLists: {},
-//           color: color || "#FFCDD2",
-//         };
-//       }
-
-//       // ✅ state 업데이트
-//       setProjects([defaultProject, ...names]);
-//       setProjectData(prev => ({
-//         ...prev,
-//         ...projectMap,
-//       }));
-
-//       // ✅ selectedProject 복원 (이름이 실제 프로젝트에 있을 때만 복원) 👉 이거 여기 넣기
-//       const savedProject = localStorage.getItem("selectedProject");
-//       if (savedProject && projectMap[savedProject]) {
-//         setSelectedProject(savedProject);
-//       } else {
-//         const firstProject = names[0] || defaultProject;
-//         setSelectedProject(firstProject);
-//       }
-
-//     } catch (error) {
-//       console.error("❌ 프로젝트 목록 불러오기 실패:", error);
-//     }
-//   };
-
-//   fetchProjects();
-// }, []);
-
-
-
-
 
 //팀원 정보 조회
 useEffect(() => {
@@ -284,10 +158,7 @@ useEffect(() => {
 
 
 const fetchProjectMembers = async (projectId) => {
-  const token = localStorage.getItem("access-token") ||
-                localStorage.getItem("accessToken") ||
-                localStorage.getItem("jwt_token");
-
+  const token = getAccessToken();
   if (!token) {
     console.error("❌ Access Token이 없습니다!");
     return;
@@ -321,8 +192,6 @@ const fetchProjectMembers = async (projectId) => {
     console.error("❌ 팀원 조회 오류:", error);
   }
 };
-
-
   
   useEffect(() => {
     setProjects((prev) => {
@@ -1075,7 +944,11 @@ const updateTodo = async (todoId, updatedTitle) => {
 
 //프로젝트 일정 추가
 const addProjectSchedule = async (projectId, scheduleData) => {
-  const token = localStorage.getItem("access-token") || localStorage.getItem("jwt_token");
+
+  const token = localStorage.getItem("access-token") || localStorage.getItem("jwt_token") || localStorage.getItem("accessToken");
+  const payload = JSON.parse(atob(token.split('.')[1]));
+  console.log(payload);
+
 
   try {
     const response = await fetch(`https://calendo.site/api/projects/${projectId}/schedules`, {
@@ -1087,8 +960,12 @@ const addProjectSchedule = async (projectId, scheduleData) => {
       body: JSON.stringify(scheduleData),
     });
 
-    if (!response.ok) throw new Error("프로젝트 일정 추가 실패");
-
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("❌ 프로젝트 일정 추가 실패:", response.status, errorText);
+      throw new Error("프로젝트 일정 추가 실패");
+    }
+  
     const result = await response.json();
     console.log("✅ 프로젝트 일정 추가 성공:", result);
     return result; // { message, schedule }
@@ -1100,8 +977,7 @@ const addProjectSchedule = async (projectId, scheduleData) => {
 
 //프로젝트 일정 수정
 const updateProjectSchedule = async (projectId, scheduleId, updatedData) => {
-  const token = localStorage.getItem("access-token") || localStorage.getItem("jwt_token");
-
+  const token = getAccessToken();
   try {
     const response = await fetch(`https://calendo.site/api/projects/${projectId}/schedules/${scheduleId}`, {
       method: "PUT",
@@ -1130,12 +1006,13 @@ const updateProjectSchedule = async (projectId, scheduleId, updatedData) => {
 
 //프로젝트 일정 삭제
 const deleteProjectSchedule = async (projectId, scheduleId) => {
-  const token = localStorage.getItem("access-token") || localStorage.getItem("jwt_token");
+  const token = getAccessToken();
 
   try {
     const response = await fetch(`https://calendo.site/api/projects/${projectId}/schedules/${scheduleId}`, {
       method: "DELETE",
       headers: {
+        "Content-Type": "application/json",
         "Authorization": `Bearer ${token}`,
       },
     });
@@ -1156,8 +1033,10 @@ const fetchSingleProjectSchedule = async (projectId, scheduleId) => {
     const response = await fetch(`https://calendo.site/api/projects/${projectId}/schedules/${scheduleId}`, {
       method: "GET",
       headers: {
+        "Content-Type": "application/json",
         "Authorization": `Bearer ${token}`,
       },
+      credentials: "include"
     });
 
     if (!response.ok) throw new Error("프로젝트 일정 단일 조회 실패");
@@ -1173,7 +1052,7 @@ const fetchSingleProjectSchedule = async (projectId, scheduleId) => {
 
 //프로젝트 일정 목록 조회(여러개)
 const fetchProjectSchedules = async (projectId) => {
-  const token = localStorage.getItem("access-token") || localStorage.getItem("jwt_token");
+  const token = localStorage.getItem("access-token") || localStorage.getItem("jwt_token") || localStorage.getItem("accessToken");
 
   try {
     const response = await fetch(`https://calendo.site/api/projects/${projectId}/schedules`, {
@@ -1181,6 +1060,7 @@ const fetchProjectSchedules = async (projectId) => {
       headers: {
         "Authorization": `Bearer ${token}`,
       },
+      credentials: "include",
     });
 
     if (!response.ok) throw new Error("프로젝트 일정 목록 조회 실패");
@@ -1279,151 +1159,6 @@ const handleNextMonth = () => {
   });
 };
 
-// const handleSave = async () => {
-//   let currentDate = new Date(selectedStartDate);
-//   const endDate = new Date(selectedEndDate);
-//   let updatedEvents = { ...projectData[selectedProject]?.events };
-//   let updatedTodos = { ...todoLists };
-
-//   while (currentDate <= endDate) {
-//     const dateKey = currentDate.toDateString();
-//     const newItem = {
-//       title: newTitle,
-//       type: eventType,
-//       color: projectData[selectedProject]?.color || "#FFCDD2",
-//       time: selectedTime,
-//       repeat: repeatOption,
-//       alert: alertOption,
-//       completed: false,
-//     };
-
-//     if (eventType === "Schedule") {
-//       if (editingIndex !== null) {
-//         if (!updatedEvents[dateKey]) updatedEvents[dateKey] = [];
-//         updatedEvents[dateKey][editingIndex] = newItem;
-//         setEditingIndex(null);
-//       } else {
-//         const added = await addEvent(); // ✅ addEvent가 서버로부터 받은 일정 객체 반환
-
-//         if (added) {
-//           const updatedItem = {
-//             ...added,
-//             type: "Schedule",
-//             color: projectData[selectedProject]?.color || "#FFCDD2",
-//             time: selectedTime,
-//             repeat: repeatOption,
-//             alert: alertOption,
-//             completed: false
-//           };
-
-//           if (!updatedEvents[dateKey]) updatedEvents[dateKey] = [];
-//           updatedEvents[dateKey].push(updatedItem);
-//         }
-
-//         // 🔁 반복 처리 (화면용)
-//         const createRepeatItem = (dateObj) => ({
-//           ...newItem,
-//           color: projectData[selectedProject]?.color || "#FFCDD2",
-//         });
-
-//         if (repeatOption === "weekly") {
-//           for (let i = 1; i <= 10; i++) {
-//             let nextDate = new Date(currentDate);
-//             nextDate.setDate(nextDate.getDate() + i * 7);
-//             const nextDateKey = nextDate.toDateString();
-//             if (!updatedEvents[nextDateKey]) updatedEvents[nextDateKey] = [];
-//             updatedEvents[nextDateKey].push(createRepeatItem(nextDate));
-//           }
-//         }
-
-//         if (repeatOption === "monthly") {
-//           for (let i = 1; i <= 12; i++) {
-//             let nextDate = new Date(currentDate);
-//             nextDate.setMonth(nextDate.getMonth() + i);
-//             const nextDateKey = nextDate.toDateString();
-//             if (!updatedEvents[nextDateKey]) updatedEvents[nextDateKey] = [];
-//             updatedEvents[nextDateKey].push(createRepeatItem(nextDate));
-//           }
-//         }
-
-//         if (repeatOption === "yearly") {
-//           for (let i = 1; i <= 5; i++) {
-//             let nextDate = new Date(currentDate);
-//             nextDate.setFullYear(currentDate.getFullYear() + i);
-//             const nextDateKey = nextDate.toDateString();
-//             if (!updatedEvents[nextDateKey]) updatedEvents[nextDateKey] = [];
-//             updatedEvents[nextDateKey].push(createRepeatItem(nextDate));
-//           }
-//         }
-//       }
-
-//       setEvents(updatedEvents);
-//     } else if (eventType === "To-do") {
-//       if (!updatedTodos[dateKey]) updatedTodos[dateKey] = [];
-
-//       if (editingIndex !== null) {
-//         const todoToUpdate = updatedTodos[dateKey][editingIndex];
-//         if (!todoToUpdate.id) {
-//           console.error("❌ 수정할 투두에 ID가 없습니다:", todoToUpdate);
-//           return;
-//         }
-//         await updateTodo(todoToUpdate.id, newTitle);
-
-//         updatedTodos[dateKey] = updatedTodos[dateKey].map((todo, idx) =>
-//           idx === editingIndex ? { ...todo, title: newTitle } : todo
-//         );
-//         setEditingIndex(null);
-      
-
-//          } else {
-//         // 🔥 서버에 실제 추가 요청
-//         const addedTodo = await addTodo(newTitle, selectedDate);
-
-//         if (addedTodo && addedTodo.id) {
-//           const newTodoItem = {
-//             id: addedTodo.id,
-//             title: addedTodo.title,
-//             checked: addedTodo.checked,
-//             userId: addedTodo.userId,
-//             type: "To-do",
-//             color: projectData[selectedProject]?.color || "#FFCDD2",
-//             time: selectedTime,
-//             repeat: repeatOption,
-//             alert: alertOption,
-//             completed: addedTodo.checked || false
-//           };
-//           updatedTodos[dateKey].push(newTodoItem);
-//         } else {
-//           console.error("❌ 추가된 투두에 ID가 없습니다:", addedTodo);
-//         }
-//       }
-
-//       setTodoLists(updatedTodos);
-//       setProjectData((prev) => ({
-//         ...prev,
-//         [selectedProject]: {
-//           ...prev[selectedProject],
-//           todoLists: {
-//             ...prev[selectedProject]?.todoLists,
-//             [dateKey]: updatedTodos[dateKey],
-//           },
-//         },
-//       }));
-//     }
-
-//     currentDate.setDate(currentDate.getDate() + 1);
-//   }
-
-//   setProjectData((prev) => ({
-//     ...prev,
-//     [selectedProject]: {
-//       ...prev[selectedProject],
-//       events: updatedEvents,
-//     },
-//   }));
-
-//   closeModal();
-// };
 
 const handleSave = async () => {
   let currentDate = new Date(selectedStartDate);
@@ -1471,33 +1206,106 @@ const handleSave = async () => {
             repeatType: repeatOption?.toUpperCase() || "NONE",
           };
 
-          await updateEvent(existing.id, updated);
+          if (selectedProject === defaultProject) {
+            // ✅ 메인 일정 수정
+            await updateEvent(existing.id, updated);
+          } else {
+            // ✅ 프로젝트 일정 수정
+            const projectId = projectData[selectedProject]?.id;
+            if (!projectId) {
+              console.error("❌ 프로젝트 ID 없음 - 프로젝트 일정 수정 중단");
+            } else {
+              const updatedScheduleData = {
+                title: newTitle,
+                startDateTime: toISOStringWithoutSeconds(selectedStartDate, startTime),
+                endDateTime: toISOStringWithoutSeconds(selectedStartDate, endTime),
+                repeatType: repeatOption?.toUpperCase() || "NONE"
+              };
+              await updateProjectSchedule(projectId, existing.id, updatedScheduleData);
+            }
+          }
+          // ✅ 화면 반영
           updatedEvents[dateKey][editingIndex] = { ...existing, ...newItem };
         } else {
           console.warn("❌ 기존 일정에 ID 없음:", existing);
         }
-        setEditingIndex(null);
-      } else {
-        const added = await addEvent();
+
+        // setEditingIndex(null);
+
+        //   await updateEvent(existing.id, updated);
+        //   updatedEvents[dateKey][editingIndex] = { ...existing, ...newItem };
+        // } else {
+        //   console.warn("❌ 기존 일정에 ID 없음:", existing);
+        // }
+        // setEditingIndex(null);
+      }  else {
+        const startTimeStr = typeof selectedStartTime === "string"
+          ? selectedStartTime
+          : formatToHHMM(selectedStartTime);
+      
+        const endTimeStr = typeof selectedEndTime === "string"
+          ? selectedEndTime
+          : formatToHHMM(selectedEndTime);
+      
+        const formattedStart = toISOStringWithoutSeconds(selectedStartDate, startTimeStr);
+        const formattedEnd = toISOStringWithoutSeconds(selectedStartDate, endTimeStr);
+      
+        let added;
+      
+        if (selectedProject === defaultProject) {
+          // ✅ 메인 일정 추가
+          added = await addEvent();
+        } else {
+          const token = localStorage.getItem("access-token") || localStorage.getItem("jwt_token");
+          console.log("🛂 토큰 확인:", token);
+
+          // ✅ 프로젝트 일정 추가
+          const projectId = projectData[selectedProject]?.id;
+          if (!projectId) {
+            console.error("❌ 프로젝트 ID 없음 - 프로젝트 일정 추가 중단");
+            return;
+          }
+          console.log("🧪 addProjectSchedule 호출 준비", selectedProject, projectData[selectedProject]);
+          added = await addProjectSchedule(projectId, {
+            title: newTitle,
+            startDateTime: formattedStart,
+            endDateTime: formattedEnd,
+            repeatType: repeatOption?.toUpperCase() || "NONE"
+          });
+          console.log("📨 addProjectSchedule 호출됨");
+
+        } 
+
         if (added) {
+          // ✅ 프로젝트 일정 추가 후 스케줄 객체 꺼냄
+          const addedSchedule = added.schedule ?? added;
           const updatedItem = {
-            ...added,
+            id: addedSchedule.projectScheduleId, // 🔥 중요
+            title: addedSchedule.title,
+            startDateTime: addedSchedule.startDateTime,
+            endDateTime: addedSchedule.endDateTime,
             type: "Schedule",
             color: projectData[selectedProject]?.color || "#FFCDD2",
             time: selectedTime,
             repeat: repeatOption,
             alert: alertOption,
-            completed: false
+            completed: false,
           };
 
           if (!updatedEvents[dateKey]) updatedEvents[dateKey] = [];
           updatedEvents[dateKey].push(updatedItem);
         }
 
+        // const createRepeatItem = (dateObj) => ({
+        //   ...newItem,
+        //   color: projectData[selectedProject]?.color || "#FFCDD2",
+        // });
         const createRepeatItem = (dateObj) => ({
           ...newItem,
-          color: projectData[selectedProject]?.color || "#FFCDD2",
+          id: null, // ❌ 없는 상태로는 수정 안됨
+          date: dateObj.toISOString().slice(0, 10),
         });
+        
 
         if (repeatOption === "weekly") {
           for (let i = 1; i <= 10; i++) {
@@ -2034,13 +1842,25 @@ const toggleTodo = async (todo) => {
                 if (eventType === "To-do") {
                   const todoToDelete = todoLists[dateKey]?.[editingIndex];
                   if (todoToDelete) {
-                    setDeleteConfirm({ show: true, item: todoToDelete, isTodo: true });
+                    setDeleteConfirm({
+                      show: true,
+                      item: todoToDelete,
+                      isTodo: true,
+                      isMain: selectedProject === defaultProject  // ✅ 메인 투두 여부
+                    });                    
+                    // setDeleteConfirm({ show: true, item: todoToDelete, isTodo: true });
                     closeModal();
                   }
                 } else if (eventType === "Schedule") {
                   const eventToDelete = events[dateKey]?.[editingIndex];
                   if (eventToDelete) {
-                    setDeleteConfirm({ show: true, item: eventToDelete, isTodo: false });
+                    setDeleteConfirm({
+                      show: true,
+                      item: eventToDelete,
+                      isTodo: false,
+                      isMain: selectedProject === defaultProject  // ✅ 메인 일정 여부 추가
+                    });
+                    //setDeleteConfirm({ show: true, item: eventToDelete, isTodo: false });
                     closeModal();
                   }
                 } 
