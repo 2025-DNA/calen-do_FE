@@ -112,6 +112,7 @@ const WholeSchedule = () => {
       console.log("✅ 프로젝트 목록:", data);
 
       const projectMap = {};
+      
       const names = data.map(project => {
         const name = project.projectName; // ✅ 여기가 핵심
         projectMap[name] = {
@@ -126,10 +127,20 @@ const WholeSchedule = () => {
 
       // ✅ state 업데이트
       setProjects([defaultProject, ...names]);
-      setProjectData((prev) => ({
-        ...prev,
-        ...projectMap,
-      }));
+      setProjectData((prev) => {
+        return {
+          ...prev,
+          [defaultProject]: {
+            ...prev[defaultProject],
+            id: null // 🔥 메인 일정에는 id 명시적으로 추가!
+          },
+          ...projectMap,
+        };
+      });
+      // setProjectData((prev) => ({
+      //   ...prev,
+      //   ...projectMap,
+      // }));
     } catch (error) {
       console.error("❌ 프로젝트 목록 불러오기 실패:", error);
     }
@@ -724,9 +735,7 @@ useEffect(() => {
 
   const fetchEventsForDate = async (date) => {
     const formattedDate = formatDateToYYYYMMDD(date);
-    const token = localStorage.getItem("access-token") ||
-                  localStorage.getItem("accessToken") ||
-                  localStorage.getItem("jwt_token");
+    const token = getAccessToken();
   
     if (!token) {
       console.error("❌ Access Token이 없습니다!");
@@ -748,14 +757,35 @@ useEffect(() => {
       if (!response.ok) throw new Error("일정 불러오기 실패");
   
       const data = await response.json();
+      const fetchedEvents = data.schedules || [];
       console.log("✅ 조회한 일정 데이터:", data.schedules);
-  
+
+       // 👉 메인 projectData에도 반영
+      setProjectData((prev) => ({
+        ...prev,
+        [defaultProject]: {
+          ...prev[defaultProject],
+          events: {
+            ...prev[defaultProject].events,
+            [new Date(date).toDateString()]: fetchedEvents,
+          },
+        },
+      }));
+
+       // 👉 전역 이벤트 상태도 업데이트
       setEvents((prev) => ({
         ...prev,
-        [formattedDate]: data.schedules || [],
+        [new Date(date).toDateString()]: fetchedEvents,
       }));
     } catch (error) {
       console.error("일정 불러오기 오류:", error);
+  
+    //   setEvents((prev) => ({
+    //     ...prev,
+    //     [formattedDate]: data.schedules || [],
+    //   }));
+    // } catch (error) {
+    //   console.error("일정 불러오기 오류:", error);
     }
   };
   
@@ -1210,6 +1240,7 @@ const handleSave = async () => {
             // ✅ 메인 일정 수정
             await updateEvent(existing.id, updated);
           } else {
+            
             // ✅ 프로젝트 일정 수정
             const projectId = projectData[selectedProject]?.id;
             if (!projectId) {
@@ -1230,14 +1261,6 @@ const handleSave = async () => {
           console.warn("❌ 기존 일정에 ID 없음:", existing);
         }
 
-        // setEditingIndex(null);
-
-        //   await updateEvent(existing.id, updated);
-        //   updatedEvents[dateKey][editingIndex] = { ...existing, ...newItem };
-        // } else {
-        //   console.warn("❌ 기존 일정에 ID 없음:", existing);
-        // }
-        // setEditingIndex(null);
       }  else {
         const startTimeStr = typeof selectedStartTime === "string"
           ? selectedStartTime
@@ -1416,9 +1439,7 @@ const addEvent = async () => {
   console.log("🕒 시작일:", selectedStartDate);
   console.log("🕒 시작시간:", selectedStartTime);
 
-  const token = localStorage.getItem("access-token") ||
-                localStorage.getItem("accessToken") ||
-                localStorage.getItem("jwt_token");
+  const token = getAccessToken();
 
 
   // 🛠️ 시간 값이 Date 객체이면 문자열로 변환
@@ -1471,12 +1492,38 @@ const addEvent = async () => {
 
     const result = await response.json();
     console.log("✅ 일정 추가 성공:", result);
-    return result.schedule; // ✅ schedule 객체 반환
+    // 메인 일정 응답에서 id가 없을 경우 임시 id 생성
+    const schedule = result.schedule || {};
+    const finalId = schedule.id ?? schedule.scheduleId ?? Date.now(); // 혹시 다른 필드에 들어있을 수도 있으니 점검
 
+    if (!schedule.id) {
+      console.warn("⚠️ 반환된 일정에 id 없음. 임시 id 사용:", finalId);
+    }
+
+    return {
+      ...schedule,
+      id: finalId, // 반드시 id가 들어가도록 강제
+    };
   } catch (error) {
     console.error("❌ 일정 추가 오류:", error);
     return null;
   }
+
+  //   // ✅ schedule이 객체가 아니거나 id가 없으면 콘솔로 확인
+  //   if (!result.schedule || !result.schedule.id) {
+  //     console.warn("❌ 메인 일정 응답에 ID 없음:", result.schedule);
+  //   }
+
+  //   // ✅ 명시적으로 반환
+  //   return {
+  //     id: result.schedule?.id, // 메인 일정이면 이게 있어야 함
+  //     ...result.schedule
+  //   }
+
+  // } catch (error) {
+  //   console.error("❌ 일정 추가 오류:", error);
+  //   return null;
+  // }
 };
 // 전체 코드 유지
 // ✅ 일정 삭제 핸들러 분기 추가
@@ -1486,10 +1533,7 @@ const handleDelete = async (item, isTodo) => {
     console.error("❌ 삭제할 항목의 ID가 없습니다. 데이터 확인 필요:", item);
     return;
   }
-
-  const token = localStorage.getItem("access-token") ||
-                localStorage.getItem("accessToken") ||
-                localStorage.getItem("jwt_token");
+  const token = getAccessToken();
 
   if (!token) {
     console.error("❌ Access Token이 없습니다!");
@@ -1567,71 +1611,9 @@ const handleDelete = async (item, isTodo) => {
 };
 
 
-  
-// const handleDelete = async (item, isTodo) => {
-//   if (!item?.id) {
-//     console.error("❌ 삭제할 항목의 ID가 없습니다. 데이터 확인 필요:", item);
-//     return;
-//   }
-
-//   const token = localStorage.getItem("access-token") ||
-//                 localStorage.getItem("accessToken") ||
-//                 localStorage.getItem("jwt_token");
-
-//   if (!token) {
-//     console.error("❌ Access Token이 없습니다!");
-//     return;
-//   }
-
-//   const dateKey = selectedDate.toDateString();
-
-//   // 🔁 To-do 삭제 경로는 그대로 두고 일정 삭제 경로만 수정
-//   const url = isTodo
-//     ? `https://calendo.site/api/todos/toggle/${item.id}`
-//     : `https://calendo.site/delete-schedule/${item.id}`;
-
-//   console.log("🚀 삭제 요청 URL:", url);
-
-//   try {
-//     const response = await fetch(url, {
-//       method: "DELETE",
-//       headers: {
-//         "Content-Type": "application/json",
-//         "Authorization": `Bearer ${token}`,
-//       },
-//     });
-
-//     if (!response.ok) {
-//       const errorMessage = await response.text();
-//       console.error("삭제 실패:", errorMessage);
-//       throw new Error(errorMessage);
-//     }
-
-//     console.log("✅ 삭제 성공:", item.id);
-
-//     if (isTodo) {
-//       setTodoLists((prev) => ({
-//         ...prev,
-//         [dateKey]: prev[dateKey].filter((todo) => todo.id !== item.id),
-//       }));
-//     } else {
-//       setEvents((prev) => ({
-//         ...prev,
-//         [dateKey]: prev[dateKey].filter((event) => event.id !== item.id),
-//       }));
-//     }
-//   } catch (error) {
-//     console.error("삭제 오류:", error);
-//   }
-
-//   setDeleteConfirm({ show: false, item: null, isTodo: false });
-// };
-
 const toggleTodo = async (todo) => {
   const dateKey = selectedDate.toDateString();
-  const token = localStorage.getItem("access-token") ||
-                localStorage.getItem("accessToken") ||
-                localStorage.getItem("jwt_token");
+  const token = getAccessToken();
 
   if (!token) {
     console.error("❌ Access Token이 없습니다!");
