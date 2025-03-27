@@ -1478,8 +1478,9 @@ const addEvent = async () => {
     return null;
   }
 };
+// 전체 코드 유지
+// ✅ 일정 삭제 핸들러 분기 추가
 
-  
 const handleDelete = async (item, isTodo) => {
   if (!item?.id) {
     console.error("❌ 삭제할 항목의 ID가 없습니다. 데이터 확인 필요:", item);
@@ -1497,40 +1498,66 @@ const handleDelete = async (item, isTodo) => {
 
   const dateKey = selectedDate.toDateString();
 
-  // 🔁 To-do 삭제 경로는 그대로 두고 일정 삭제 경로만 수정
-  const url = isTodo
-    ? `https://calendo.site/api/todos/toggle/${item.id}`
-    : `https://calendo.site/delete-schedule/${item.id}`;
-
-  console.log("🚀 삭제 요청 URL:", url);
-
   try {
-    const response = await fetch(url, {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
-      },
-    });
-
-    if (!response.ok) {
-      const errorMessage = await response.text();
-      console.error("삭제 실패:", errorMessage);
-      throw new Error(errorMessage);
-    }
-
-    console.log("✅ 삭제 성공:", item.id);
-
     if (isTodo) {
+      // 🟩 To-do 삭제
+      const response = await fetch(`https://calendo.site/api/todos/toggle/${item.id}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorMessage = await response.text();
+        console.error("삭제 실패:", errorMessage);
+        throw new Error(errorMessage);
+      }
+
       setTodoLists((prev) => ({
         ...prev,
         [dateKey]: prev[dateKey].filter((todo) => todo.id !== item.id),
       }));
+
     } else {
-      setEvents((prev) => ({
-        ...prev,
-        [dateKey]: prev[dateKey].filter((event) => event.id !== item.id),
-      }));
+      // 🟦 일정 삭제 (메인 or 프로젝트 여부 확인)
+      if (deleteConfirm.isMain) {
+        // ✅ 메인 일정 삭제
+        const response = await fetch(`https://calendo.site/delete-schedule/${item.id}`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          const errorMessage = await response.text();
+          console.error("삭제 실패:", errorMessage);
+          throw new Error(errorMessage);
+        }
+
+        setEvents((prev) => ({
+          ...prev,
+          [dateKey]: prev[dateKey].filter((event) => event.id !== item.id),
+        }));
+
+      } else {
+        // ✅ 프로젝트 일정 삭제
+        const projectId = projectData[selectedProject]?.id;
+        if (!projectId) {
+          console.error("❌ 프로젝트 ID가 없습니다. 삭제 중단");
+          return;
+        }
+
+        await deleteProjectSchedule(projectId, item.id);
+
+        setEvents((prev) => ({
+          ...prev,
+          [dateKey]: prev[dateKey].filter((event) => event.id !== item.id),
+        }));
+      }
     }
   } catch (error) {
     console.error("삭제 오류:", error);
@@ -1538,6 +1565,67 @@ const handleDelete = async (item, isTodo) => {
 
   setDeleteConfirm({ show: false, item: null, isTodo: false });
 };
+
+
+  
+// const handleDelete = async (item, isTodo) => {
+//   if (!item?.id) {
+//     console.error("❌ 삭제할 항목의 ID가 없습니다. 데이터 확인 필요:", item);
+//     return;
+//   }
+
+//   const token = localStorage.getItem("access-token") ||
+//                 localStorage.getItem("accessToken") ||
+//                 localStorage.getItem("jwt_token");
+
+//   if (!token) {
+//     console.error("❌ Access Token이 없습니다!");
+//     return;
+//   }
+
+//   const dateKey = selectedDate.toDateString();
+
+//   // 🔁 To-do 삭제 경로는 그대로 두고 일정 삭제 경로만 수정
+//   const url = isTodo
+//     ? `https://calendo.site/api/todos/toggle/${item.id}`
+//     : `https://calendo.site/delete-schedule/${item.id}`;
+
+//   console.log("🚀 삭제 요청 URL:", url);
+
+//   try {
+//     const response = await fetch(url, {
+//       method: "DELETE",
+//       headers: {
+//         "Content-Type": "application/json",
+//         "Authorization": `Bearer ${token}`,
+//       },
+//     });
+
+//     if (!response.ok) {
+//       const errorMessage = await response.text();
+//       console.error("삭제 실패:", errorMessage);
+//       throw new Error(errorMessage);
+//     }
+
+//     console.log("✅ 삭제 성공:", item.id);
+
+//     if (isTodo) {
+//       setTodoLists((prev) => ({
+//         ...prev,
+//         [dateKey]: prev[dateKey].filter((todo) => todo.id !== item.id),
+//       }));
+//     } else {
+//       setEvents((prev) => ({
+//         ...prev,
+//         [dateKey]: prev[dateKey].filter((event) => event.id !== item.id),
+//       }));
+//     }
+//   } catch (error) {
+//     console.error("삭제 오류:", error);
+//   }
+
+//   setDeleteConfirm({ show: false, item: null, isTodo: false });
+// };
 
 const toggleTodo = async (todo) => {
   const dateKey = selectedDate.toDateString();
