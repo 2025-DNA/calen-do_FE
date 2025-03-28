@@ -84,6 +84,14 @@ const WholeSchedule = () => {
       console.warn("⚠️ projectId 없음:", projectInfo);
     }
   }, [selectedProject, projectData]);
+
+  // ✅ 메인 프로젝트면 오늘 날짜 일정 자동 조회
+  useEffect(() => {
+    if (selectedProject === defaultProject) {
+      const today = new Date();
+      fetchEventsForDate(today);
+    }
+  }, [selectedProject]);
   
   
 
@@ -298,9 +306,7 @@ useEffect(() => {
 
 
 const addTodo = async (dateKey) => {
-  const token = localStorage.getItem("access-token") ||
-                localStorage.getItem("accessToken") ||
-                localStorage.getItem("jwt_token");
+  const token = getAccessToken();
 
   if (!token) {
     console.error("❌ Access Token이 없습니다!");
@@ -813,9 +819,7 @@ const handleDayClick = (date) => {
 
 //일정 수정
 const updateEvent = async (scheduleId, updatedEvent) => {
-  const token = localStorage.getItem("access-token") ||
-                localStorage.getItem("accessToken") ||
-                localStorage.getItem("jwt_token");
+  const token = getAccessToken();
 
   if (!token) {
     console.error("❌ Access Token이 없습니다!");
@@ -866,32 +870,32 @@ const updateEvent = async (scheduleId, updatedEvent) => {
 };
 
 
-// 📌 일정 삭제 (DELETE 요청)
-const handleDeleteEvent = async () => {
-  if (!deleteConfirm.item) return; // 삭제할 항목이 없으면 실행하지 않음
+// // 📌 일정 삭제 (DELETE 요청)
+// const handleDeleteEvent = async () => {
+//   if (!deleteConfirm.item) return; // 삭제할 항목이 없으면 실행하지 않음
 
-  const scheduleId = deleteConfirm.item.id; // 일정 ID 가져오기
-  const dateKey = selectedDate.toDateString();
+//   const scheduleId = deleteConfirm.item.id; // 일정 ID 가져오기
+//   const dateKey = selectedDate.toDateString();
 
-  try {
-    const response = await fetch(`/api/schedules/${scheduleId}`, {
-      method: "DELETE",
-    });
+//   try {
+//     const response = await fetch(`/api/schedules/${scheduleId}`, {
+//       method: "DELETE",
+//     });
 
-    if (!response.ok) throw new Error("일정 삭제 실패");
+//     if (!response.ok) throw new Error("일정 삭제 실패");
 
-    // 삭제 성공 후 상태 업데이트
-    setEvents((prev) => ({
-      ...prev,
-      [dateKey]: prev[dateKey]?.filter((event) => event.id !== scheduleId),
-    }));
+//     // 삭제 성공 후 상태 업데이트
+//     setEvents((prev) => ({
+//       ...prev,
+//       [dateKey]: prev[dateKey]?.filter((event) => event.id !== scheduleId),
+//     }));
 
-    setDeleteConfirm({ show: false, item: null, isTodo: false });
-    closeModal();
-  } catch (error) {
-    console.error("일정 삭제 오류:", error);
-  }
-};
+//     setDeleteConfirm({ show: false, item: null, isTodo: false });
+//     closeModal();
+//   } catch (error) {
+//     console.error("일정 삭제 오류:", error);
+//   }
+// };
 
 
 const fetchTodosForDate = async (date) => {
@@ -975,9 +979,8 @@ const updateTodo = async (todoId, updatedTitle) => {
 //프로젝트 일정 추가
 const addProjectSchedule = async (projectId, scheduleData) => {
 
-  const token = localStorage.getItem("access-token") || localStorage.getItem("jwt_token") || localStorage.getItem("accessToken");
-  const payload = JSON.parse(atob(token.split('.')[1]));
-  console.log(payload);
+  const token = getAccessToken();
+  console.log("📨 프로젝트 일정 추가 요청:", projectId, scheduleData);
 
 
   try {
@@ -1222,7 +1225,12 @@ const handleSave = async () => {
     if (eventType === "Schedule") {
       if (editingIndex !== null) {
         if (!updatedEvents[dateKey]) updatedEvents[dateKey] = [];
-        const existing = updatedEvents[dateKey][editingIndex];
+        const eventList = selectedProject === defaultProject
+        ? events[dateKey] || []
+        : projectData[selectedProject]?.events[dateKey] || [];
+        const existing = eventList[editingIndex];
+
+        //const existing = updatedEvents[dateKey][editingIndex];
         if (existing?.id) {
           const startTime = selectedStartTime instanceof Date ? formatToHHMM(selectedStartTime) : selectedStartTime;
           const endTime = selectedEndTime instanceof Date ? formatToHHMM(selectedEndTime) : selectedEndTime;
@@ -1303,7 +1311,7 @@ const handleSave = async () => {
           // ✅ 프로젝트 일정 추가 후 스케줄 객체 꺼냄
           const addedSchedule = added.schedule ?? added;
           const updatedItem = {
-            id: addedSchedule.projectScheduleId, // 🔥 중요
+            id: addedSchedule.projectScheduleId || addedSchedule.id, // 🔥 중요
             title: addedSchedule.title,
             startDateTime: addedSchedule.startDateTime,
             endDateTime: addedSchedule.endDateTime,
@@ -1509,25 +1517,10 @@ const addEvent = async () => {
     return null;
   }
 
-  //   // ✅ schedule이 객체가 아니거나 id가 없으면 콘솔로 확인
-  //   if (!result.schedule || !result.schedule.id) {
-  //     console.warn("❌ 메인 일정 응답에 ID 없음:", result.schedule);
-  //   }
-
-  //   // ✅ 명시적으로 반환
-  //   return {
-  //     id: result.schedule?.id, // 메인 일정이면 이게 있어야 함
-  //     ...result.schedule
-  //   }
-
-  // } catch (error) {
-  //   console.error("❌ 일정 추가 오류:", error);
-  //   return null;
-  // }
 };
-// 전체 코드 유지
-// ✅ 일정 삭제 핸들러 분기 추가
 
+
+// ✅ 일정 삭제 핸들러 분기 추가
 const handleDelete = async (item, isTodo) => {
   if (!item?.id) {
     console.error("❌ 삭제할 항목의 ID가 없습니다. 데이터 확인 필요:", item);
@@ -1546,7 +1539,7 @@ const handleDelete = async (item, isTodo) => {
     if (isTodo) {
       // 🟩 To-do 삭제
       const response = await fetch(`https://calendo.site/api/todos/toggle/${item.id}`, {
-        method: "DELETE",
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`,
@@ -1558,6 +1551,7 @@ const handleDelete = async (item, isTodo) => {
         console.error("삭제 실패:", errorMessage);
         throw new Error(errorMessage);
       }
+      console.log("✅ To-do 삭제 성공:", item.id); // ✅ 로그 추가
 
       setTodoLists((prev) => ({
         ...prev,
@@ -1582,6 +1576,8 @@ const handleDelete = async (item, isTodo) => {
           throw new Error(errorMessage);
         }
 
+        console.log("✅ 메인 일정 삭제 성공:", item.id); // ✅ 여기 로그 추가
+
         setEvents((prev) => ({
           ...prev,
           [dateKey]: prev[dateKey].filter((event) => event.id !== item.id),
@@ -1596,6 +1592,9 @@ const handleDelete = async (item, isTodo) => {
         }
 
         await deleteProjectSchedule(projectId, item.id);
+
+
+        console.log("✅ 프로젝트 일정 삭제 성공:", item.id); // ✅ 이미 있음
 
         setEvents((prev) => ({
           ...prev,
