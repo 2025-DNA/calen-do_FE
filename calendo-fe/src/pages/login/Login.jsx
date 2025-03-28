@@ -23,6 +23,9 @@ const Login = () => {
     if (!token || hasRun.current) return;
     hasRun.current = true;
 
+    // ✅ 기존 localStorage 정리
+    localStorage.clear(); // 👈 여기가 추가된 부분
+
     // ✅ 토큰 저장 및 URL 정리
     localStorage.setItem("accessToken", token);
     console.log("🔹 저장된 accessToken:", localStorage.getItem("accessToken"));
