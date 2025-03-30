@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import styled from "styled-components";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import api from "../../services/api";
 import "react-calendar/dist/Calendar.css";
 import * as S from "./styled";
@@ -12,35 +12,50 @@ dayjs.locale("ko");
 
 function CreatePlan() {
     const navigate = useNavigate();
+    const location = useLocation();
     const [date, setDate] = useState(null);
     const [startTime, setStartTime] = useState("09:00:00");
     const [endTime, setEndTime] = useState("22:00:00");
     const [meetingName, setMeetingName] = useState("");
     const [deadline, setDeadline] = useState("");
     const [currentUser, setCurrentUser] = useState(null);
-    const [projectId, setProjectId] = useState(50); // 예시값. 필요 시 props나 context 등으로 받기
+    const [projectId, setProjectId] = useState(location.state?.projectId || null);
     const today = new Date();
 
     useEffect(() => {
-        const fetchCurrentUser = async () => {
+        const checkUserAndProject = async () => {
+            const token = localStorage.getItem("accessToken");
+            if (!token || !projectId) {
+                alert("로그인 또는 프로젝트 정보가 필요합니다.");
+                navigate("/login");
+                return;
+            }
+
             try {
-                const token = localStorage.getItem("accessToken");
-                if (!token) {
-                    alert("로그인이 필요합니다.");
-                    navigate("/login");
-                    return;
-                }
-                const response = await api.get("/api/users/me", {
+                const userRes = await api.get("/api/users/me", {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                setCurrentUser(response.data);
-            } catch (error) {
-                console.error("사용자 정보 불러오기 실패:", error);
-                alert("사용자 정보를 불러오는 중 오류가 발생했습니다.");
+                const userId = userRes.data.userId;
+                setCurrentUser(userRes.data);
+
+                const projectRes = await api.get(`/api/projects/${projectId}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+
+                if (userId !== projectRes.data.createdBy) {
+                    // 팀원이라면 바로 이동
+                    navigate(`/time?projectId=${projectId}`, {
+                        state: { projectId, userId }
+                    });
+                }
+                // 팀장이면 stay
+            } catch (err) {
+                console.error("유저 또는 프로젝트 정보 오류:", err);
+                alert("정보를 불러오는데 실패했습니다.");
             }
         };
-        fetchCurrentUser();
-    }, []);
+        checkUserAndProject();
+    }, [projectId, navigate]);
 
     const handleCreate = async () => {
         if (!date || date.length !== 2 || !meetingName || !deadline) {
@@ -51,12 +66,6 @@ function CreatePlan() {
         const [startDate, endDate] = date.map((d) => dayjs(d).format("YYYY-MM-DD"));
         const formattedDeadline = dayjs(deadline).format("YYYY-MM-DDT00:00:00");
         const accessToken = localStorage.getItem("accessToken");
-
-        if (!accessToken || !currentUser) {
-            alert("로그인이 필요합니다.");
-            navigate("/login");
-            return;
-        }
 
         const requestData = {
             projectId,
@@ -73,72 +82,26 @@ function CreatePlan() {
             const response = await api.post(
                 `/api/timetables/${projectId}/create`,
                 requestData,
-                {
-                    headers: {
-                        Authorization: `Bearer ${accessToken}`
-                    }
-                }
+                { headers: { Authorization: `Bearer ${accessToken}` } }
             );
-
-            alert("일정이 생성되었습니다.");
-            console.log("✅ 서버 응답:", response.data);
 
             const timetableId = response.data.timetableId;
 
-            // 생성 후 역할에 따라 이동
-            checkCaptainAndRedirect(
-                projectId,
-                startDate,
-                endDate,
-                startTime,
-                endTime,
-                timetableId
-            );
-
+            navigate(`/time?projectId=${projectId}`, {
+                state: {
+                    date: [startDate, endDate],
+                    startTime,
+                    endTime,
+                    timetableId,
+                    projectId,
+                    userId: currentUser.userId
+                }
+            });
         } catch (error) {
-            console.error("API 요청 에러:", error);
+            console.error("일정 생성 실패:", error);
             alert("일정 생성에 실패했습니다.");
         }
     };
-
-    const checkCaptainAndRedirect = async (projectId, startDate, endDate, startTime, endTime, timetableId) => {
-        try {
-            const accessToken = localStorage.getItem("accessToken");
-            console.log("🔑 accessToken:", accessToken);
-
-    
-            const userRes = await api.get("/api/users/me", {
-                headers: { Authorization: `Bearer ${accessToken}` }
-            });
-            const currentUserId = userRes.data.userId;
-    
-            const projectRes = await api.get(`/api/projects/${projectId}`, {
-                headers: { Authorization: `Bearer ${accessToken}` }
-            });
-            const createdBy = projectRes.data.createdBy;
-    
-            if (currentUserId === createdBy) {
-                alert("✅ captain입니다.");
-            } else {
-                alert("✅ member입니다.");
-            }
-    
-            navigate(`/time?projectId=${projectId}`, {
-                state: {
-                date: [startDate, endDate],
-                startTime,
-                endTime,
-                timetableId,
-                projectId, // ✅ 이거도 state에 넣어야 CreateTime에서 받을 수 있음
-                userId: currentUserId // ✅ userId 추가
-            }
-            });
-        } catch (error) {
-            console.error("❌ 사용자/프로젝트 정보 조회 실패:", error);
-            alert("사용자 정보 확인 중 오류가 발생했습니다.");
-        }
-    };
-    
 
     return (
         <S.Container className="create-plan">
@@ -163,10 +126,7 @@ function CreatePlan() {
                 </S.CalendarWrapper>
 
                 <S.TimePickerWrapper>
-                    <S.Select
-                        value={startTime}
-                        onChange={(e) => setStartTime(e.target.value)}
-                    >
+                    <S.Select value={startTime} onChange={(e) => setStartTime(e.target.value)}>
                         {Array.from({ length: 24 }, (_, i) => (
                             <option key={i} value={`${String(i).padStart(2, "0")}:00:00`}>
                                 {`${String(i).padStart(2, "0")}:00`}
@@ -174,10 +134,7 @@ function CreatePlan() {
                         ))}
                     </S.Select>
 
-                    <S.Select
-                        value={endTime}
-                        onChange={(e) => setEndTime(e.target.value)}
-                    >
+                    <S.Select value={endTime} onChange={(e) => setEndTime(e.target.value)}>
                         {Array.from({ length: 24 }, (_, i) => (
                             <option key={i} value={`${String(i).padStart(2, "0")}:00:00`}>
                                 {`${String(i).padStart(2, "0")}:00`}

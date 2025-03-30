@@ -1,6 +1,6 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
-import axios from "axios";
+import api from "../../services/api";
 import * as S from "./styled";
 import backIcon from "../../assets/icons/backbtn.svg";
 import ProgressBar from "../../components/current/progressBar";
@@ -29,7 +29,7 @@ function CheckTime() {
                     return;
                 }
     
-                const res = await axios.get(
+                const res = await api.get(
                     `/api/projects/${projectId}/available_times/timetable/${timetableId}`,
                     {
                         headers: {
@@ -153,7 +153,89 @@ function CheckTime() {
                 </S.Participants>
             </S.Main>
             <S.Bottom>
-                <S.SelectButton onClick={() => navigate(-1)}>수정하기</S.SelectButton>
+            <S.SelectButton1
+                onClick={() => {
+                    console.log("🚀 이동할 때 projectId:", projectId);
+                    console.log("🚀 이동할 때 timetableId:", timetableId);
+
+                    navigate(`/mytime/${projectId}/${timetableId}`);
+                }}
+                >
+                수정하기
+            </S.SelectButton1>
+            <S.SelectButton2
+                onClick={async () => {
+                    const accessToken = localStorage.getItem("accessToken");
+                    if (!accessToken) {
+                    alert("로그인이 필요합니다.");
+                    navigate("/login");
+                    return;
+                    }
+
+                    // 1. 겹치는 시간 계산
+                    const overlapMap = {};
+
+                    availableTimes.forEach(({ date, startTime, endTime }) => {
+                    const start = new Date(`${date}T${startTime}`);
+                    const end = new Date(`${date}T${endTime}`);
+
+                    let current = new Date(start);
+                    while (current < end) {
+                        const key = `${date}_${current.getHours()}:${current.getMinutes() === 0 ? "00" : "30"}`;
+                        overlapMap[key] = (overlapMap[key] || 0) + 1;
+
+                        if (current.getMinutes() === 0) {
+                        current.setMinutes(30);
+                        } else {
+                        current.setMinutes(0);
+                        current.setHours(current.getHours() + 1);
+                        }
+                    }
+                    });
+
+                    // 2. 참여자 전원이 공통으로 선택한 시간 찾기
+                    const commonSlots = Object.entries(overlapMap).filter(
+                    ([, count]) => count === totalMemberCount
+                    );
+
+                    if (commonSlots.length === 0) {
+                    alert("모든 참여자가 공통으로 선택한 시간이 없습니다.");
+                    return;
+                    }
+
+                    // 3. 첫 번째 공통 시간 선택
+                    const [firstKey] = commonSlots[0]; // ex: "2025-03-01_14:00"
+                    const [confirmedDate, confirmedStartTime] = firstKey.split("_");
+                    const [hour, minute] = confirmedStartTime.split(":");
+                    const confirmedEndTime = `${String(Number(hour)).padStart(2, "0")}:${minute === "00" ? "30" : "00"}`;
+
+                    // 4. 서버로 POST 요청
+                    try {
+                    const res = await api.post(
+                        `/api/projects/${projectId}/timetable/${timetableId}/final_meetings`,
+                        {
+                        projectId: Number(projectId),
+                        confirmedDate,
+                        meetingTitle: timetable.meetingName || "최종 회의",
+                        confirmedStartTime: `${hour}:${minute}:00`,
+                        confirmedEndTime: `${confirmedEndTime}:00`,
+                        },
+                        {
+                        headers: { Authorization: `Bearer ${accessToken}` }
+                        }
+                    );
+
+                    alert("최종 회의 일정이 등록되었습니다.");
+                    console.log("✅ 서버 응답:", res.data);
+                    } catch (error) {
+                    console.error("❌ 회의 등록 실패:", error);
+                    alert("회의 일정 등록 중 오류가 발생했습니다.");
+                    }
+                }}
+                >
+                일정 추가하기
+                </S.SelectButton2>
+
             </S.Bottom>
         </S.Container>
     );

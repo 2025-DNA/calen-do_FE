@@ -29,22 +29,18 @@ function CreateTime() {
                         }
                     }
                 );
-    
-                console.log("📦 latest timetable 응답:", response.data); // ← 응답 확인용
-    
+
                 const data = response.data;
-    
-                // 값이 없으면 예외 처리
+
                 if (!data || !data.startDate || !data.endDate || !data.startTime || !data.endTime || !data.timetableId) {
                     alert("타임테이블 정보가 올바르지 않습니다. 팀장이 먼저 일정을 생성해야 합니다.");
                     navigate("/");
                     return;
                 }
-    
-                // 데이터 세팅
+
                 setDate([data.startDate, data.endDate]);
-                setStartTime(data.startTime.split(":")[0]); // ✅ 이제 안전하게 사용 가능
-                setEndTime(data.endTime.split(":")[0]);
+                setStartTime(data.startTime.split(":"[0]));
+                setEndTime(data.endTime.split(":"[0]));
                 setTimetableId(data.timetableId);
             } catch (error) {
                 console.error("❌ 타임테이블 불러오기 실패:", error);
@@ -52,11 +48,10 @@ function CreateTime() {
                 navigate("/");
             }
         };
-    
+
         if (projectId) fetchLatestTimetable();
     }, [projectId, navigate]);
-    
-    // 테이블 생성 관련 함수
+
     const generateTimeSlots = () => {
         if (!startTime || !endTime) return [];
         const times = [];
@@ -81,6 +76,44 @@ function CreateTime() {
             currentDate.setDate(currentDate.getDate() + 1);
         }
         return days;
+    };
+
+    const getTimeBlocksByDate = (selectedTimes, dateIdx) => {
+        const blocks = Array.from(selectedTimes)
+            .filter((key) => key.endsWith(`-${dateIdx}`))
+            .map((key) => key.split("-")[0])
+            .sort();
+
+        const ranges = [];
+        let start = null;
+        let prev = null;
+
+        blocks.forEach((time) => {
+            if (!start) {
+                start = time;
+                prev = time;
+                return;
+            }
+
+            const [prevHour, prevMin] = prev.split(":").map(Number);
+            const [currHour, currMin] = time.split(":").map(Number);
+            const prevTotal = prevHour * 60 + prevMin;
+            const currTotal = currHour * 60 + currMin;
+
+            if (currTotal - prevTotal === 30) {
+                prev = time;
+            } else {
+                ranges.push([start, prev]);
+                start = time;
+                prev = time;
+            }
+        });
+
+        if (start) {
+            ranges.push([start, prev]);
+        }
+
+        return ranges;
     };
 
     const timeSlots = generateTimeSlots();
@@ -120,24 +153,17 @@ function CreateTime() {
         const payload = [];
 
         dateColumns.forEach((dateObj, dateIdx) => {
-            const selectedForDate = Array.from(selectedTimes)
-                .filter((key) => key.endsWith(`-${dateIdx}`))
-                .map((key) => key.split("-")[0]);
-
-            if (selectedForDate.length > 0) {
-                selectedForDate.sort();
-                const first = selectedForDate[0];
-                const last = selectedForDate[selectedForDate.length - 1];
-
+            const ranges = getTimeBlocksByDate(selectedTimes, dateIdx);
+            ranges.forEach(([start, end]) => {
                 payload.push({
                     timetableId,
                     projectId,
                     userId,
                     date: dayjs(dateObj).format("YYYY-MM-DD"),
-                    startTime: `${first}:00`,
-                    endTime: `${last}:00`
+                    startTime: `${start}:00`,
+                    endTime: `${end}:30`
                 });
-            }
+            });
         });
 
         try {
@@ -155,7 +181,6 @@ function CreateTime() {
         }
     };
 
-    // ⏳ 타임테이블이 불러오기 전이면 대기 화면
     if (!date || !startTime || !endTime || !timetableId) {
         return <div>타임테이블 정보를 불러오는 중입니다...</div>;
     }

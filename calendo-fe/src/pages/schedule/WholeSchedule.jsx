@@ -1845,7 +1845,15 @@ const toggleTodo = async (todo) => {
         <div className="app-bar-right">
           <img src={alertIcon} className="icon" onClick={() => navigate("/alert")}/>
           <img src={addProjectIcon} className="icon" onClick={() => navigate("/invite")} />
-          <img src={timeIcon} className="icon" onClick={() => navigate("/plan")}/>
+          <img src={timeIcon} className="icon" onClick={() => {
+          const selectedProjectId = projectData[selectedProject]?.id;
+          if (!selectedProjectId) {
+            alert("프로젝트 ID를 찾을 수 없습니다.");
+            return;
+          }
+          navigate("/plan", { state: { projectId: selectedProjectId } });
+        }} />
+
           <img src={profileIcon} className="icon" onClick={() => navigate("/mypage")} />
         
         </div>
