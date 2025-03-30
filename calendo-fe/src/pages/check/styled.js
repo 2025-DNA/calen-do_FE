@@ -140,11 +140,11 @@ export const Table = styled.table`
     }
 
     td.others-3 {
-        background-color:rgb(224, 146, 182);
+        background-color:#EA6B6B;
     }
 
     td.both {
-        background-color:rgb(214, 117, 154);
+        background-color:#EA6B6B;
     }
 `;
 

@@ -1,6 +1,7 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import api from "../../services/api";
+import { getColorByParticipantCount } from "../../utils/colorUtils";
 import * as S from "./styled";
 import backIcon from "../../assets/icons/backbtn.svg";
 import ProgressBar from "../../components/current/progressBar";
@@ -13,6 +14,8 @@ function CheckTime() {
     const [checkedUserCount, setCheckedUserCount] = useState(0);
     const [totalMemberCount, setTotalMemberCount] = useState(0);
     const [timetable, setTimetable] = useState(null);
+    const [checkedNicknames, setCheckedNicknames] = useState([]);
+    const [uncheckedNicknames, setUncheckedNicknames] = useState([]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -41,6 +44,9 @@ function CheckTime() {
                 setAvailableTimes(res.data.availableTimes);
                 setCheckedUserCount(res.data.checkedUserCount);
                 setTotalMemberCount(res.data.totalMemberCount);
+                setCheckedNicknames(res.data.checkedNicknames || []);
+                setUncheckedNicknames(res.data.uncheckedNicknames || []);
+
                 if (res.data.availableTimes.length > 0) {
                     setTimetable(res.data.availableTimes[0].timetableId);
                 }
@@ -108,6 +114,26 @@ function CheckTime() {
         return "";
     };
 
+    const getCellStyle = (date, time) => {
+        const dateStr = date.toISOString().split("T")[0];
+        const [hour, minute] = time.split(":").map(Number);
+        const cellTime = new Date(date);
+        cellTime.setHours(hour);
+        cellTime.setMinutes(minute);
+    
+        const count = availableTimes.filter(({ date: d, startTime, endTime }) => {
+            if (d !== dateStr) return false;
+            const start = new Date(`${d}T${startTime}`);
+            const end = new Date(`${d}T${endTime}`);
+            return cellTime >= start && cellTime < end;
+        }).length;
+    
+        return {
+            backgroundColor: getColorByParticipantCount(count),
+        };
+    };
+    
+
     return (
         <S.Container>
             <S.Header>
@@ -131,7 +157,7 @@ function CheckTime() {
                             <tr key={i}>
                                 <td>{time}</td>
                                 {dateColumns.map((day, j) => (
-                                    <td key={j} className={getCellClassName(day, time)} />
+                                    <td key={j} style={getCellStyle(day, time)} />
                                 ))}
                             </tr>
                         ))}
@@ -144,13 +170,14 @@ function CheckTime() {
                 </S.SubTitle>
                 <ProgressBar headCount={totalMemberCount} participants={Array(checkedUserCount).fill("✓")} />
                 <S.Participants>
-                    {Array(checkedUserCount).fill().map((_, index) => (
-                        <ParticipantsBlock key={index} participant={`참여자 ${index + 1}`} />
+                    {checkedNicknames.map((nickname, index) => (
+                        <ParticipantsBlock key={index} participant={nickname} status="checked" />
                     ))}
-                    {Array(totalMemberCount - checkedUserCount).fill().map((_, index) => (
-                        <ParticipantsBlock key={`empty-${index}`} participant="?" />
+                    {uncheckedNicknames.map((nickname, index) => (
+                        <ParticipantsBlock key={`empty-${index}`} participant={nickname} status="unchecked" />
                     ))}
                 </S.Participants>
+
             </S.Main>
             <S.Bottom>
             <S.SelectButton1
@@ -211,6 +238,20 @@ function CheckTime() {
 
                     // 4. 서버로 POST 요청
                     try {
+                        // Axios 요청 직전에 넣기
+                        console.log("📬 요청 시작...");
+                        console.log("URL:", `/api/projects/${projectId}/timetable/${timetableId}/final_meetings`);
+                        console.log("BODY:", {
+                        projectId: Number(projectId),
+                        confirmedDate,
+                        meetingTitle: timetable.meetingName || "최종 회의",
+                        confirmedStartTime: `${hour}:${minute}:00`,
+                        confirmedEndTime: `${confirmedEndTime}:00`,
+                        });
+                        console.log("HEADERS:", {
+                        Authorization: `Bearer ${accessToken}`
+                        });
+
                     const res = await api.post(
                         `/api/projects/${projectId}/timetable/${timetableId}/final_meetings`,
                         {

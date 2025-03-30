@@ -1984,14 +1984,71 @@ const toggleTodo = async (todo) => {
         <div className="app-bar-right">
           <img src={alertIcon} className="icon" onClick={() => navigate("/alert")}/>
           <img src={addProjectIcon} className="icon" onClick={() => navigate("/invite")} />
-          <img src={timeIcon} className="icon" onClick={() => {
-          const selectedProjectId = projectData[selectedProject]?.id;
-          if (!selectedProjectId) {
-            alert("프로젝트 ID를 찾을 수 없습니다.");
-            return;
-          }
-          navigate("/plan", { state: { projectId: selectedProjectId } });
-        }} />
+          <img
+  src={timeIcon}
+  className="icon"
+  onClick={async () => {
+    const selectedProjectId = projectData[selectedProject]?.id;
+    const token = localStorage.getItem("accessToken");
+    const nickname = JSON.parse(localStorage.getItem("user"))?.email?.split("@")[0];
+
+    if (!selectedProjectId || !token || !nickname) {
+      alert("프로젝트 또는 사용자 정보를 확인할 수 없습니다.");
+      return;
+    }
+
+    try {
+      // 🔍 최신 타임테이블 가져오기
+      const latestRes = await fetch(
+        `https://calendo.site/api/projects/${selectedProjectId}/available_times/latest-timetable`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!latestRes.ok) throw new Error("타임테이블 조회 실패");
+
+      const { timetableId } = await latestRes.json();
+
+      if (!timetableId) {
+        navigate("/plan", { state: { projectId: selectedProjectId } });
+        return;
+      }
+
+      // 🔍 해당 타임테이블의 닉네임 목록 조회
+      const detailRes = await fetch(
+        `https://calendo.site/api/projects/${selectedProjectId}/available_times/timetable/${timetableId}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!detailRes.ok) throw new Error("상세 타임테이블 조회 실패");
+
+      const detailData = await detailRes.json();
+      const checkedNicknames = detailData.checkedNicknames || [];
+
+      if (checkedNicknames.includes(nickname)) {
+        navigate(`/check-time/${selectedProjectId}/${timetableId}`);
+      } else {
+        navigate("/plan", { state: { projectId: selectedProjectId } });
+      }
+    } catch (error) {
+      console.error("타임테이블 확인 실패:", error);
+      alert("타임테이블을 확인하는 데 실패했습니다.");
+      navigate("/plan", { state: { projectId: selectedProjectId } });
+    }
+  }}
+/>
+
 
           <img src={profileIcon} className="icon" onClick={() => navigate("/mypage")} />
         
