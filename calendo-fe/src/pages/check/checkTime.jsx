@@ -240,7 +240,7 @@ function CheckTime() {
                     try {
                         // Axios 요청 직전에 넣기
                         console.log("📬 요청 시작...");
-                        console.log("URL:", `/api/projects/${projectId}/timetable/${timetableId}/final_meetings`);
+                        console.log("URL:", `/api/projects/${projectId}/final_meetings`);
                         console.log("BODY:", {
                         projectId: Number(projectId),
                         confirmedDate,
@@ -253,7 +253,7 @@ function CheckTime() {
                         });
 
                     const res = await api.post(
-                        `/api/projects/${projectId}/timetable/${timetableId}/final_meetings`,
+                        `/api/projects/${projectId}/final_meetings`,
                         {
                         projectId: Number(projectId),
                         confirmedDate,
