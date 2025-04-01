@@ -75,6 +75,17 @@ const WholeSchedule = () => {
     }
   }, []);
  
+  // ✅ 1. 현재 달 ±1개월 미리 조회 (프리페칭)
+useEffect(() => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth();
+
+  fetchMainSchedulesForMonth(year, month - 1); // 이전 달
+  fetchMainSchedulesForMonth(year, month);     // 현재 달
+  fetchMainSchedulesForMonth(year, month + 1); // 다음 달
+}, []);
+
   
   useEffect(() => {
     const projectInfo = projectData[selectedProject];
@@ -196,7 +207,7 @@ useEffect(() => {
           id: project.id,
           events: {},
           todoLists: {},
-          color: "#FFCDD2"
+          color: "#ccf0ff"
         };
         return name; // ✅ name은 projectName에서 가져와야 함
       });
@@ -306,7 +317,7 @@ const handleCreateProject = () => {
     setProjects([...projects, newProjectName]);
     setProjectData({
       ...projectData,
-      [newProjectName]: { events: {}, todoLists: {}, color: "#FFCDD2" }, // 🔥 프로젝트 색상 추가
+      [newProjectName]: { events: {}, todoLists: {}, color: "#ccf0ff" }, // 🔥 프로젝트 색상 추가
     });
     setSelectedProject(newProjectName);
     closeProjectModal();
@@ -874,14 +885,23 @@ useEffect(() => {
 
       
        // 👉 메인 projectData에도 반영
+      // setProjectData((prev) => ({
+      //   ...prev,
+      //   [defaultProject]: {
+      //     ...prev[defaultProject],
+      //     events: {
+      //       ...prev[defaultProject].events,
+      //       [dateKey]: fetchedEvents,
+      //     },
+      //   },
+      // }));
       setProjectData((prev) => ({
         ...prev,
-        [defaultProject]: {
-          ...prev[defaultProject],
+        [selectedProject]: {
+          ...prev[selectedProject],
           events: {
-            ...prev[defaultProject].events,
+            ...prev[selectedProject].events,
             [dateKey]: fetchedEvents,
-           // [new Date(date).toDateString()]: fetchedEvents,
           },
         },
       }));
