@@ -111,14 +111,20 @@ useEffect(() => {
   
         const scheduleMap = {};
         schedules.forEach((schedule) => {
-          const dateKey = new Date(schedule.startDateTime).toDateString();
+          const start = schedule.startDateTime || `${schedule.confirmedDate}T${schedule.confirmedStartTime}`;
+          const end = schedule.endDateTime || `${schedule.confirmedDate}T${schedule.confirmedEndTime}`;
+          //const dateKey = new Date(schedule.startDateTime).toDateString();
+          const dateKey = new Date(start).toDateString(); // ✅ 이걸로 교체
           if (!scheduleMap[dateKey]) scheduleMap[dateKey] = [];
           scheduleMap[dateKey].push({
             ...schedule,
-            id: schedule.projectScheduleId, // 🔥 여기가 중요!
+            id: schedule.projectScheduleId || schedule.meetingId || schedule.id,
+            startDateTime: start,
+            endDateTime: end,
+            time: formatTime(start), // ✅ 시간 텍스트 표시
             type: "Schedule",
             color: projectInfo.color || "#FFCDD2",
-            time: formatTime(schedule.startDateTime),
+           
           });
         });
 
@@ -1797,6 +1803,7 @@ const handleDelete = async (item, isTodo) => {
 };
 
 
+
 const toggleTodo = async (todo) => {
   const dateKey = selectedDate.toDateString();
   const token = getAccessToken();
@@ -2021,7 +2028,6 @@ const toggleTodo = async (todo) => {
             const dateKey = date.toDateString();
             const dayEvents = events[dateKey] || [];
             console.log(dateKey, events[dateKey])
-            console.log("📅 tileContent dateKey:", dateKey, "이벤트:", dayEvents);
           
             return (
               <div className="calendar-event-container">
