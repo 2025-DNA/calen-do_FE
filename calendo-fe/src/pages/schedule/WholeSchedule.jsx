@@ -150,13 +150,15 @@ useEffect(() => {
 }, [selectedProject]);
 
 // 최초 렌더링 시 1회 호출
+// ✅ 최초 진입 또는 새로고침 시 한번만 호출
 useEffect(() => {
   if (selectedProject === defaultProject && !mainScheduleFetchedOnce) {
     const today = new Date();
     fetchMainSchedulesForMonth(today.getFullYear(), today.getMonth());
-    setMainScheduleFetchedOnce(true); // 👉 useState로 관리
+    setMainScheduleFetchedOnce(true);
   }
-}, [selectedProject]);
+}, [selectedProject, mainScheduleFetchedOnce]); // ← ✅ 중요
+
 
   
   
