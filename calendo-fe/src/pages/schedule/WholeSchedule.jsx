@@ -1978,6 +1978,7 @@ const toggleTodo = async (todo) => {
       alert("프로젝트 또는 사용자 정보를 확인할 수 없습니다.");
       return;
     }
+
     try {
       // 🔍 최신 타임테이블 가져오기
       const latestRes = await fetch(
@@ -1990,6 +1991,13 @@ const toggleTodo = async (todo) => {
           },
         }
       );
+
+      if (latestRes.status === 404) {
+        // 🟥 타임테이블이 아직 생성되지 않은 경우
+        console.warn("📭 타임테이블 없음 → /plan으로 이동");
+        navigate("/plan", { state: { projectId: selectedProjectId } });
+        return;
+      }
 
       if (!latestRes.ok) throw new Error("타임테이블 조회 실패");
 
@@ -2029,6 +2037,7 @@ const toggleTodo = async (todo) => {
     }
   }}
 />
+
           <img src={profileIcon} className="icon" onClick={() => navigate("/mypage")} />
         
         </div>
