@@ -1979,59 +1979,57 @@ const toggleTodo = async (todo) => {
       return;
     }
 
-    try {
-      // 🔍 최신 타임테이블 가져오기
-      const latestRes = await fetch(
-        `https://calendo.site/api/projects/${selectedProjectId}/available_times/latest-timetable`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+    // try {
+    //   // 🔍 최신 타임테이블 가져오기
+    //   const latestRes = await fetch(
+    //     `https://calendo.site/api/projects/${selectedProjectId}/available_times/latest-timetable`,
+    //     {
+    //       method: "GET",
+    //       headers: {
+    //         Authorization: `Bearer ${token}`,
+    //         "Content-Type": "application/json",
+    //       },
+    //     }
+    //   );
 
-      if (!latestRes.ok) throw new Error("타임테이블 조회 실패");
+    //   if (!latestRes.ok) throw new Error("타임테이블 조회 실패");
 
-      const { timetableId } = await latestRes.json();
+    //   const { timetableId } = await latestRes.json();
 
-      if (!timetableId) {
-        navigate("/plan", { state: { projectId: selectedProjectId } });
-        return;
-      }
+    //   if (!timetableId) {
+    //     navigate("/plan", { state: { projectId: selectedProjectId } });
+    //     return;
+    //   }
 
-      // 🔍 해당 타임테이블의 닉네임 목록 조회
-      const detailRes = await fetch(
-        `https://calendo.site/api/projects/${selectedProjectId}/available_times/timetable/${timetableId}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+    //   // 🔍 해당 타임테이블의 닉네임 목록 조회
+    //   const detailRes = await fetch(
+    //     `https://calendo.site/api/projects/${selectedProjectId}/available_times/timetable/${timetableId}`,
+    //     {
+    //       method: "GET",
+    //       headers: {
+    //         Authorization: `Bearer ${token}`,
+    //         "Content-Type": "application/json",
+    //       },
+    //     }
+    //   );
 
-      if (!detailRes.ok) throw new Error("상세 타임테이블 조회 실패");
+    //   if (!detailRes.ok) throw new Error("상세 타임테이블 조회 실패");
 
-      const detailData = await detailRes.json();
-      const checkedNicknames = detailData.checkedNicknames || [];
+    //   const detailData = await detailRes.json();
+    //   const checkedNicknames = detailData.checkedNicknames || [];
 
-      if (checkedNicknames.includes(nickname)) {
-        navigate(`/check-time/${selectedProjectId}/${timetableId}`);
-      } else {
-        navigate("/plan", { state: { projectId: selectedProjectId } });
-      }
-    } catch (error) {
-      console.error("타임테이블 확인 실패:", error);
-      alert("타임테이블을 확인하는 데 실패했습니다.");
-      navigate("/plan", { state: { projectId: selectedProjectId } });
-    }
+    //   if (checkedNicknames.includes(nickname)) {
+    //     navigate(`/check-time/${selectedProjectId}/${timetableId}`);
+    //   } else {
+    //     navigate("/plan", { state: { projectId: selectedProjectId } });
+    //   }
+    // } catch (error) {
+    //   console.error("타임테이블 확인 실패:", error);
+    //   alert("타임테이블을 확인하는 데 실패했습니다.");
+    //   navigate("/plan", { state: { projectId: selectedProjectId } });
+    // }
   }}
 />
-
-
           <img src={profileIcon} className="icon" onClick={() => navigate("/mypage")} />
         
         </div>
