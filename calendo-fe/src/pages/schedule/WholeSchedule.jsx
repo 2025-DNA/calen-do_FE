@@ -90,16 +90,24 @@ useEffect(() => {
   useEffect(() => {
     const projectInfo = projectData[selectedProject];
     const projectId = projectInfo?.id;
-  
-    if (!projectInfo || projectInfo.events && Object.keys(projectInfo.events).length > 0) {
-      return; // 🔥 이미 불러온 일정이면 호출 X
-    }
+
+    // ✅ 일정이 이미 로딩되어 있으면 재호출 방지
+    const alreadyFetched = projectInfo?.events && Object.keys(projectInfo.events).length > 0;
+    if (alreadyFetched) return;
+
+    // ✅ 메인 프로젝트는 월 단위로 한 번만 호출
+  if (selectedProject === defaultProject && !mainScheduleFetchedOnce) {
+    const today = new Date();
+    fetchMainSchedulesForMonth(today.getFullYear(), today.getMonth());
+    setMainScheduleFetchedOnce(true);
+    return;
+  }
   
     // ✅ 메인 일정이면 오늘 날짜만 조회 (한 번만)
-    if (selectedProject === defaultProject) {
-      fetchMainSchedulesForMonth(new Date().getFullYear(), new Date().getMonth());
-      return;
-    }
+    // if (selectedProject === defaultProject) {
+    //   fetchMainSchedulesForMonth(new Date().getFullYear(), new Date().getMonth());
+    //   return;
+    // }
   
     // ✅ 프로젝트 일정이면 전체 스케줄 불러오기
     if (projectId) {
@@ -129,7 +137,7 @@ useEffect(() => {
         });
 
   
-        setEvents(scheduleMap);
+       // setEvents(scheduleMap);
         setProjectData((prev) => ({
           ...prev,
           [selectedProject]: {
@@ -139,7 +147,57 @@ useEffect(() => {
         }));
       });
     }
+  }, [selectedProject]);
+
+  useEffect(() => {
+    if (!selectedProject) return;
+  
+    const allProjectsHaveEvents = projects.every(project =>
+      projectData[project]?.events
+    );
+  
+    if (selectedProject === defaultProject && allProjectsHaveEvents) {
+      // ✅ 메인 프로젝트 병합 렌더링
+      const mergedEvents = {};
+  
+      Object.keys(projectData).forEach((project) => {
+        const projectEvents = projectData[project]?.events || {};
+        Object.entries(projectEvents).forEach(([dateKey, events]) => {
+          if (!mergedEvents[dateKey]) mergedEvents[dateKey] = [];
+          mergedEvents[dateKey].push(
+            ...events.map(event => ({
+              ...event,
+              color: projectData[project]?.color || "#FFCDD2",
+            }))
+          );
+        });
+      });
+  
+      // ✅ setEvents는 변경이 있는 경우에만
+      if (JSON.stringify(events) !== JSON.stringify(mergedEvents)) {
+        setEvents(mergedEvents);
+      }
+    } else if (selectedProject !== defaultProject) {
+      const projectEvents = projectData[selectedProject]?.events || {};
+  
+      const coloredEvents = Object.fromEntries(
+        Object.entries(projectEvents).map(([date, eventList]) => [
+          date,
+          eventList.map(event => ({
+            ...event,
+            color: projectData[selectedProject]?.color || "#FFCDD2",
+          })),
+        ])
+      );
+  
+      if (JSON.stringify(events) !== JSON.stringify(coloredEvents)) {
+        setEvents(coloredEvents);
+      }
+    }
   }, [selectedProject, projectData]);
+  
+
+
   
 
   // ✅ 프로젝트 바꿀 때마다 localStorage에도 저장
@@ -853,8 +911,8 @@ useEffect(() => {
     const formattedDate = formatDateToYYYYMMDD(date);
  
     const dateKey = new Date(date).toDateString();
-    console.log("📅 클릭한 날짜:", formattedDate);
-    console.log("🕐 원본 date 객체:", date);
+    //console.log("📅 클릭한 날짜:", formattedDate);
+    //console.log("🕐 원본 date 객체:", date);
     const token = getAccessToken();
   
     if (!token) {
@@ -863,9 +921,7 @@ useEffect(() => {
     }
   
     const url = `https://calendo.site/api/schedules?date=${formattedDate}`;
-    console.log("📅 클릭한 날짜:", formattedDate);
-    console.log("📌 요청 주소:", url);
-    console.log("📌 보낼 토큰:", token);
+    //console.log("📌 요청 주소:", url);
   
     try {
       const response = await fetch(url, {
@@ -920,8 +976,6 @@ useEffect(() => {
           ...prev,
           [dateKey]: fetchedEvents,
         };
-        console.log("📅 저장할 dateKey:", dateKey);
-        console.log("🧾 전체 events 상태:", updated);
         return updated;
       })
     } catch (error) {
@@ -1212,8 +1266,6 @@ const fetchProjectSchedulesByDate = async (projectId, date) => {
   }
 
   const formattedDate = formatDateToYYYYMMDD(date); // 예: 2025-03-30
-  console.log("📅 클릭한 날짜:", formattedDate);
-  console.log("🕐 원본 date 객체:", date);
   const url = `https://calendo.site/api/projects/${projectId}/schedules/date?date=${formattedDate}`;
 
   try {
@@ -1487,7 +1539,6 @@ const handleSave = async () => {
           added = await addEvent();
         } else {
           const token = getAccessToken();
-          console.log("🛂 토큰 확인:", token);
 
           // ✅ 프로젝트 일정 추가
           const projectId = projectData[selectedProject]?.id;
@@ -2029,7 +2080,6 @@ const toggleTodo = async (todo) => {
           tileContent={({ date }) => {
             const dateKey = date.toDateString();
             const dayEvents = events[dateKey] || [];
-            console.log(dateKey, events[dateKey])
           
             return (
               <div className="calendar-event-container">
