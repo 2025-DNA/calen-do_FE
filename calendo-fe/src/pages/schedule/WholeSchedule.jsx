@@ -2031,9 +2031,8 @@ const toggleTodo = async (todo) => {
         navigate("/plan", { state: { projectId: selectedProjectId } });
       }
     } catch (error) {
-      console.error("타임테이블 확인 실패:", error);
-      alert("타임테이블을 확인하는 데 실패했습니다.");
       navigate("/plan", { state: { projectId: selectedProjectId } });
+      return;
     }
   }}
 />
